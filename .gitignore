@@ -1,0 +1,46 @@
+# Build directory (CMake generated files)
+build/
+**/build/
+
+# vcpkg installed packages and cache
+vcpkg_installed/
+.vcpkg-root
+
+# CMake generated files (if not in build directory)
+CMakeCache.txt
+cmake_install.cmake
+CMakeFiles/
+compile_commands.json
+Makefile
+
+# Object files and executables
+*.o
+*.obj
+*.exe
+server
+*.out
+
+# Debug files
+*.pdb
+*.dSYM/
+
+# IDE specific files (you already have VS Code settings tracked)
+.vs/
+*.vcxproj*
+*.sln
+.vscode
+
+# Temporary and backup files
+*~
+*.tmp
+*.temp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Output files
+src/output.txt
+
+# Log files
+*.log
