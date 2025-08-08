@@ -1,3 +1,6 @@
+# env file
+.env
+
 # Build directory (CMake generated files)
 build/
 **/build/
