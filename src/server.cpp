@@ -34,6 +34,59 @@ const string readEnv()
   }
 }
 
+// HELP OF AI
+void create_team(Redis& redis, const string& team_name) {
+    // Step 1: Generate a new team ID by incrementing the value at the key "team:id:counter"
+    long long team_id = redis.incr("team:id:counter");
+
+    // Step 2: Store team metadata
+    string team_key = "team:" + to_string(team_id);
+    /* redis.hset("user:100", "name", "Alice"); */
+    /* Equivalent to: user["name"] = "Alice"; */
+    unordered_map<string, string> m = {
+        {"name", team_name},
+        {"created_at", to_string(time(nullptr))}
+    };
+    redis.hmset("hash", m.begin(), m.end());
+
+    // Step 3: Add to tracking set
+    redis.sadd("teams:all", to_string(team_id));
+
+    // Add to sorted set by timestamp 
+    redis.zadd("teams:by_created", to_string(team_id), time(nullptr));
+
+    cout << "Created team '" << team_name << "' with ID " << team_id << endl;
+}
+
+bool team_exists(Redis& redis, long long team_id) {
+    string team_key = "team:" + to_string(team_id);
+    return redis.exists(team_key) == 1;
+}
+
+unordered_set<string> get_all_teams(Redis& redis) {
+  unordered_set<string> set;
+  redis.smembers("teams:all",set);
+  return set;
+}
+
+unordered_map<string, string> get_team_info(Redis& redis, long long team_id) {
+  string team_key = "team:" + to_string(team_id);
+  unordered_map<string, string> hash;
+  redis.hgetall("hash", inserter(hash, hash.end()));
+  return hash;
+}
+
+// void register_team_name(Redis& redis, const string& team_name, long long team_id) {
+//     redis.set("team:name:" + team_name, to_string(team_id));
+// }
+
+optional<string> get_team_id_by_name(Redis& redis, const string& team_name) {
+    auto val = redis.get("team:name:" + team_name);
+    if (val) return *val;
+    return nullopt;
+}
+
+
 const string handleGETResponse(const HttpRequest &req)
 {
   if (req.url == "/")
@@ -56,22 +109,22 @@ const string handlePOSTResponse(const HttpRequest &req)
       auto token = jwt::create()
                        .set_type("JWS")
                        .set_issuer("auth0")
-                       .set_payload_claim("sample", jwt::claim(std::string("test")))
                        .sign(jwt::algorithm::hs256{JWT_SECRET});
       cout << token << '\n';
-      redis.set("session:abc123", "user42", std::chrono::seconds(3600));
+
+      redis.set("session:" + token, "user42", chrono::seconds(3600));
       auto val = redis.get("session:abc123");
       if (val)
       {
-        std::cout << "Session belongs to: " << *val << std::endl;
+        cout << "Session belongs to: " << *val << endl;
       }
       redis.hset("session:abc123", {{"user_id", "user42"},
                                     {"login_time", "2025-08-07T13:45:00Z"}});
-      redis.expire("session:abc123", std::chrono::seconds(3600));
+      redis.expire("session:abc123", chrono::seconds(3600));
     }
     catch (const Error &err)
     {
-      std::cerr << "Redis error: " << err.what() << std::endl;
+      cerr << "Redis error: " << err.what() << endl;
     }
   }
   // Else condition

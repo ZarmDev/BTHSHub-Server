@@ -31,7 +31,7 @@ vector<string> split(const string& input, char delimiter) {
     string item;
 
     while (getline(ss, item, delimiter)) {
-        result.push_back(item);
+      result.push_back(item);
     }
 
     return result;
