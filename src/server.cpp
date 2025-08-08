@@ -15,14 +15,13 @@ string dir = "";
 string JWT_SECRET = "";
 Redis redis("tcp://127.0.0.1:6379");
 
-const string readEnv()
+void readEnv()
 {
   ifstream f("../.env");
 
   if (!f.is_open())
   {
     cerr << "You did not properly set the .env file. See README.md for more information.";
-    return "";
   }
   string s;
 

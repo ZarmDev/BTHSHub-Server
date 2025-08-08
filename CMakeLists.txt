@@ -1,19 +1,56 @@
 cmake_minimum_required(VERSION 3.13)
-
 project(http-server-starter-cpp)
 
-file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.hpp)
+# Specify exactly which files to compile
+set(SOURCE_FILES
+  src/server.cpp
+  src/utils.cpp
+  src/lib.cpp
+  # Add any other necessary source files explicitly
+)
 
-set(CMAKE_CXX_STANDARD 23) # Enable the C++23 standard
+# C++ Standard
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# Thread preferences
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
+# Find required packages
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(jwt-cpp CONFIG REQUIRED)
 
-add_executable(server ${SOURCE_FILES})
+# Add precompiled headers
+add_library(project_options INTERFACE)
+target_precompile_headers(project_options INTERFACE
+  <vector>
+  <string>
+  <unordered_map>
+  <unordered_set>
+  <iostream>
+)
 
-target_link_libraries(server PRIVATE Threads::Threads ZLIB::ZLIB)
-target_link_libraries(server PRIVATE hiredis redis++ pthread)
-target_link_libraries(server PRIVATE jwt-cpp::jwt-cpp)
+# Main executable
+add_executable(server ${SOURCE_FILES})
+target_link_libraries(server PRIVATE
+  project_options
+  Threads::Threads
+  ZLIB::ZLIB
+  hiredis
+  redis++
+  pthread
+  jwt-cpp::jwt-cpp
+)
+
+# Compiler warnings
+target_compile_options(server PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/W4>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra>
+)
