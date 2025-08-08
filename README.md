@@ -40,18 +40,18 @@ You only need to run this once, or whenever:
 - You change your dependencies
 - You change your toolchain
 - You delete your build/ folder
-7. Follow steps below in "Development"
+7. Run ```openssl rand -hex 32``` in order to get a private key. Then, put in a .env file like so:
+
+```
+JWT_SECRET=xxx...
+```
+8. Follow steps below in "Development"
 # Development
 1. Ensure you have Cmake extension in Vscode or run cmake in the CLI
 2. Run the redis server
 ```
 redis-server &
 ```
-3. Run ```openssl rand -hex 32``` in order to get a private key. Then, put in a .env file like so:
-
-```
-JWT_SECRET=xxx...
-```
-4. Run the cmake extension or use the CLI
+3. Use the run button at the bottom in vscode or use the Cmake CLI
 # Production notes
 Make sure to rotate JWT_SECRET every x days. Maybe write a cron job?
