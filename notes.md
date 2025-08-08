@@ -1,1 +1,2 @@
-curl -X POST -d "key1=value1&key2=value2" localhost:4221
+# Send post request to server (with data)
+curl -X POST -d "key1=value1&key2=value2" localhost:4221/

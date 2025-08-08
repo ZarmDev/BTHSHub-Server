@@ -1,5 +1,7 @@
 # env file
 .env
+# cache
+.cache
 
 # Build directory (CMake generated files)
 build/

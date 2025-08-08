@@ -1,7 +1,11 @@
+#include <iterator>
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
+#include <ostream>
 
 using namespace std;
 
@@ -35,4 +39,19 @@ vector<string> split(const string& input, char delimiter) {
     }
 
     return result;
+}
+
+
+void printSet(unordered_set<string> const &s)
+{
+    copy(s.begin(),
+            s.end(),
+            ostream_iterator<string>(cout, " "));
+}
+
+void printMap(const unordered_map<string, string>& m) 
+{
+    for (const auto& [key, value] : m) {
+        cout << key << ": " << value << "\n";
+    }
 }
