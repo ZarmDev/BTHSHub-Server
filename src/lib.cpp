@@ -7,9 +7,6 @@
 #include <unordered_map>
 #include <utility>
 #include <thread>
-// File handling
-#include <fstream>
-#include <sstream>
 // ?
 #include <unistd.h>
 #include <sys/types.h>
@@ -54,9 +51,9 @@ char *getURLPath(char *buffer, int n)
 
 bool Server::init()
 {
-  // Flush after every std::cout / std::cerr
-  std::cout << std::unitbuf;
-  std::cerr << std::unitbuf;
+  // Flush after every cout / cerr
+  cout << unitbuf;
+  cerr << unitbuf;
 
   // int socket(int domain, int type, int protocol);
   // SOCK_DGRAM - Doesn't require connection to be established, no guarentee for delivery/order/error checking, fixed size. Suitable for zoom meetings, real-time applications, games.
@@ -65,7 +62,7 @@ bool Server::init()
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd < 0)
   {
-    std::cerr << "Failed to create server socket\n";
+    cerr << "Failed to create server socket\n";
     return false;
   }
 
@@ -74,7 +71,7 @@ bool Server::init()
   int reuse = 1;
   if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
   {
-    std::cerr << "setsockopt failed\n";
+    cerr << "setsockopt failed\n";
     return false;
   }
 
@@ -85,7 +82,7 @@ bool Server::init()
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) != 0)
   {
-    std::cerr << "Failed to bind to port 4221\n";
+    cerr << "Failed to bind to port 4221\n";
     return false;
   }
 
@@ -123,6 +120,19 @@ bool Server::start(ResponseFunc callback)
   }
   close(server_fd);
   return true;
+}
+
+string replace_all(string str, const string& from, const string& to) {
+    size_t start_pos = 0; // Initialize starting position for search
+    // Loop as long as the 'from' substring is found
+    while((start_pos = str.find(from, start_pos)) != string::npos) {
+        // Replace the found occurrence
+        str.replace(start_pos, from.length(), to);
+        // Advance the starting position to avoid replacing the newly inserted 'to' string
+        // if it contains the 'from' substring itself (e.g., replacing "x" with "yx")
+        start_pos += to.length(); 
+    }
+    return str; // Return the modified string
 }
 
 // I saw an example on Codecrafters doing it this way and I have to say they did a good job
@@ -200,11 +210,11 @@ void Server::handleClient(int client_fd, ResponseFunc handleResponse)
     }
     else if (state == STATE::PROTO)
     {
-      if (c == ' ')
+      if (c == '\r')
       {
         protocol = curr;
         curr = "";
-        i += 3;
+        i++;
         state = STATE::FIRST;
       }
       else
@@ -260,14 +270,14 @@ void Server::handleClient(int client_fd, ResponseFunc handleResponse)
     data.pop_back();
   }
 
-  // cout << requestType << url << protocol << '\n';
-  // for (const auto &pair : headers)
-  // {
-  //   std::cout << "[" << pair.first << "] = [" << pair.second << "]\n";
-  // }
+  writeToFile("output.txt", bufferStr);
 
   cout << "INFO: Request to " << url << '\n';
-  cout << httpMethod << " " << protocol << " " << data << '\n';
+  cout << httpMethod << "\n" << protocol << '\n';
+  for (const auto &pair : headers)
+  {
+    cout << "[" << pair.first << "] = [" << pair.second << "]\n";
+  }
 
   HttpRequest req = {httpMethod, url, protocol, headers, data};
   string response = handleResponse(req);
@@ -277,16 +287,14 @@ void Server::handleClient(int client_fd, ResponseFunc handleResponse)
   // len is in bytes
   // flags is ???
   send(client_fd, response.c_str(), response.length(), 0);
-
-  writeToFile("output.txt", bufferStr);
 }
 
 // Help of AI
 string Response::toString() const
 {
-  std::string response = "HTTP/1.1 " + status + "\r\n";
+  string response = "HTTP/1.1 " + status + "\r\n";
   response += "Content-Type: " + contentType + "\r\n";
-  response += "Content-Length: " + std::to_string(body.length()) + "\r\n\r\n";
+  response += "Content-Length: " + to_string(body.length()) + "\r\n\r\n";
   response += body;
   return response;
 }

@@ -1,6 +1,6 @@
 #include <jwt-cpp/jwt.h>
 #include "jwt.h"
-#include "../server.h"
+#include "../global.h"
 
 using namespace std;
 
@@ -19,6 +19,7 @@ using namespace std;
       // redis.hset("session:abc123", {{"user_id", "user42"},
       //                               {"login_time", "2025-08-07T13:45:00Z"}});
       // redis.expire("session:abc123", chrono::seconds(3600));
+namespace JWT {
 const string generate_token(const string& user_id) {
     return jwt::create()
         .set_type("JWS")
@@ -27,4 +28,12 @@ const string generate_token(const string& user_id) {
         .set_issued_at(chrono::system_clock::now())
         .set_expires_at(chrono::system_clock::now() + chrono::minutes{30})
         .sign(jwt::algorithm::hs256{Global::JWT_SECRET});
+}
+
+bool verify_password(const std::string& password, const std::string& stored_hash) {
+    auto decoded = jwt::decode(Global::JWT_SECRET);
+
+    for(auto& e : decoded.get_payload_json())
+        cout << e.first << " = " << e.second << '\n';
+} 
 }

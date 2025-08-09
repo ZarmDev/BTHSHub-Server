@@ -1,4 +1,4 @@
-#include "server.h"
+#include "global.h"
 #include "lib.h"
 #include "utils.h"
 #include "./database/teamdatabase.h"
@@ -8,6 +8,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <fstream>
+#define redis Global::db
 
 using namespace std;
 
@@ -26,19 +27,13 @@ void readEnv()
 
   while (getline(f, s))
   {
-    vector<string> vals = split(s, '=');
+    vector<string> vals = split(s, "=");
     if (vals[0] == "JWT_SECRET")
     {
       Global::JWT_SECRET = vals[1];
     }
   }
 }
-void initRedis() {
-  Global::db = Redis("tcp://127.0.0.1:6379");
-}
-
-// Database
-TeamDatabase teamDB = TeamDatabase();
 
 const string handleGETResponse(const HttpRequest &req)
 {
@@ -56,20 +51,25 @@ const string handleGETResponse(const HttpRequest &req)
 const string handlePOSTResponse(const HttpRequest &req)
 {
   if (startsWith(req.url, "/createteam")) {
-    teamDB.createTeam("test");
-    unordered_set<string> teams = teamDB.getAllTeams();
+    TeamDB::createTeam("test");
+    unordered_set<string> teams = TeamDB::getAllTeams();
     printSet(teams);
-    printMap(teamDB.getTeamInfo(1));
-  } else if (startsWith(req.url, "/createaccount"))
+    printMap(TeamDB::getTeamInfo(1));
+  } else if (startsWith(req.url, "/createuser"))
   {
     try
     {
-      
+      vector<string> parsed = split(req.data, "\\n");
+      UserDB::createUser(parsed[0], parsed[1]);
     }
     catch (const std::runtime_error& e)
     {
       cerr << "Redis error: " << e.what() << endl;
+      return sendString("404 Not Found", "An error occured on our side");
     }
+  } else if (startsWith(req.url, "/login")) {
+    vector<string> parsed = split(req.data, "\\n");
+    UserDB::handle_login(parsed[0], parsed[1]);
   }
   // Else condition
   return sendString("404 Not Found", "");

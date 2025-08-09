@@ -1,12 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 project(http-server-starter-cpp)
 
-# Specify exactly which files to compile
-set(SOURCE_FILES
-  src/server.cpp
-  src/utils.cpp
-  src/lib.cpp
-  # Add any other necessary source files explicitly
+# Find all .cpp files in src directory and subdirectories
+file(GLOB_RECURSE SOURCE_FILES 
+  "src/*.cpp"
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

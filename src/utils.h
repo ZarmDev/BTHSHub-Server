@@ -7,7 +7,7 @@ using namespace std;
 
 string readFile(const string &path);
 void writeToFile(const string &path, const string &data);
-vector<string> split(const string& input, char delimiter);
+vector<string> split(string str,string sep);
 void printSet(unordered_set<string> const &s);
 void printMap(const unordered_map<string, string>& m);
 

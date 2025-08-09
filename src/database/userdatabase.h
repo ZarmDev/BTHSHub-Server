@@ -8,19 +8,8 @@
 
 using namespace std;
 
-class UserDatabase {
-public:
-    // Constructor that takes a Redis connection string
-    UserDatabase(const string& connection = "tcp://127.0.0.1:6379");
-    
-    // Team operations
-    long long createTeam(const string& team_name);
-    bool teamExists(long long team_id);
-    unordered_set<string> getAllTeams();
-    unordered_map<string, string> getTeamInfo(long long team_id);
-    optional<string> getTeamIdByName(const string& team_name);
-    
-    // Session operations (for your JWT functionality)
-    void createSession(const string& token, const string& user_id, int expiry_seconds = 3600);
-    optional<string> getSession(const string& token);
+namespace UserDB {  
+    void createUser(const string &username, const string &email);
+    void addUserToTeam(long long user_id, long long team_id);
+    string handle_login(const string &username, const string &password);
 };

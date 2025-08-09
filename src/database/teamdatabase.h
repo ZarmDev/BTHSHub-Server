@@ -9,11 +9,7 @@
 using namespace std;
 using namespace sw::redis;
 
-class TeamDatabase {
-public:
-    // Constructor that takes a Redis connection string
-    TeamDatabase();
-    
+namespace TeamDB {
     // Team operations
     long long createTeam(const string& team_name);
     bool teamExists(long long team_id);
