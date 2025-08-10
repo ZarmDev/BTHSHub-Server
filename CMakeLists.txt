@@ -21,13 +21,23 @@ endif()
 # Thread preferences
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-# Find required packages
+# Find required packages from vcpkg
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(jwt-cpp CONFIG REQUIRED)
+find_package(redis++ CONFIG REQUIRED)
+find_package(hiredis CONFIG REQUIRED)
+find_package(argon2 CONFIG REQUIRED)
 
 # Add precompiled headers
 add_library(project_options INTERFACE)
+
+find_path(JWT_CPP_INCLUDE_DIRS "jwt-cpp/base.h")
+target_include_directories(main PRIVATE ${JWT_CPP_INCLUDE_DIRS})
+target_include_directories(server PUBLIC 
+  ${PROJECT_SOURCE_DIR}/include 
+)
+
 target_precompile_headers(project_options INTERFACE
   <vector>
   <string>
@@ -38,14 +48,17 @@ target_precompile_headers(project_options INTERFACE
 
 # Main executable
 add_executable(server ${SOURCE_FILES})
+
+target_include_directories(my_app PRIVATE ${SODIUM_INCLUDE_DIRS})
 target_link_libraries(server PRIVATE
   project_options
   Threads::Threads
   ZLIB::ZLIB
-  hiredis
-  redis++
+  hiredis::hiredis
+  redis++::redis++_static
   pthread
   jwt-cpp::jwt-cpp
+  argon2::argon2
 )
 
 # Compiler warnings

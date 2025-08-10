@@ -1,30 +1,69 @@
 #include "../global.h"
 #include "./jwt.h"
+#include "hash.h"
 #define redis Global::db
 
 using namespace std;
 
+/* How the database SHOULD look like: (say we just created alice)
+// Redis keys and values
+// Redis keys and values
+{
+  "user:42": {
+    "username": "alice",
+    "email": "alice@example.com",
+    "created_at": "1723228800",
+    "password_hash": "$2b$12$..."
+  },
+  "username:alice": "42",
+  "email:alice@example.com": "42",
+  "users:all": Set(["42", "43", ...]),
+  "users:by_created": SortedSet({ "42": 1723228800, ... })
+}
+*/
+
 namespace UserDB {
-void createUser(const string &username, const string &email) {
-  string user_key = "user:" + username;
+void createUser(const string &username, const string &email,
+                const string &password) {
+  string username_key = "username:" + username;
   string email_key = "email:" + email;
-  // Before creating a user
-  if (redis.exists(user_key) || redis.exists(email_key)) {
+
+  // Check if username or email already exists
+  if (redis.exists(username_key) || redis.exists(email_key)) {
     cout << "Error: Username or email already exists." << endl;
     return;
   }
 
+  // Generate a new user ID (you can use an atomic counter or UUID)
+  string user_id = to_string(redis.incr("user:id:counter"));
+  string user_key = "user:" + user_id;
+
+  // Hash the password securely
+  string password_hash = Hash::hashPassword(password);
+
+  // Store user metadata in a flat hash
   unordered_map<string, string> hash = {
       {"username", username},
       {"email", email},
-      {"created_at", to_string(time(nullptr))}};
+      {"created_at", to_string(time(nullptr))},
+      {"password_hash", password_hash},
+      {"status", "offline"},
+      {"profile_picture_url", ""},
+      {"isAdmin", "false"}
+  };
   redis.hmset(user_key, hash.begin(), hash.end());
 
-  redis.set("username:" + username, to_string(user_id));
-  redis.set("email:" + email, to_string(user_id));
+  // Store user_tags (like "taking 3 APS" or "Stuyvesant reject")
+  // string tags_key = user_key + ":tags";
+  // This can be done later since we don't know what the user wants...
 
-  redis.sadd("users:all", to_string(user_id));
-  redis.zadd("users:by_created", to_string(user_id), time(nullptr));
+  // Index by username and email
+  redis.set(username_key, user_id);
+  redis.set(email_key, user_id);
+
+  // Add to global user sets
+  redis.sadd("users:all", user_id);
+  // redis.zadd("users:by_created", user_id, time(nullptr));
 
   cout << "Created user '" << username << "' with ID " << user_id << endl;
 }
@@ -50,7 +89,7 @@ void addUserToTeam(long long user_id, long long team_id) {
 
 string handle_login(const string &username, const string &password) {
   // Step 1: Lookup user by username
-  OptionalString user_id_opt = redis.get("user:username:" + username);
+  OptionalString user_id_opt = redis.get("user:" + username);
   if (!user_id_opt) {
     // empty string means invalid username or password
     return "";
