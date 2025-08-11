@@ -1,5 +1,5 @@
-#include "../global.h"
-#include "./jwt.h"
+#include "global.h"
+#include "jwt.h"
 #include "hash.h"
 #define redis Global::db
 
@@ -23,8 +23,7 @@ using namespace std;
 */
 
 namespace UserDB {
-void createUser(const string &username, const string &email,
-                const string &password) {
+void createUser(const string &username, const string &password, const string &email) {
   string username_key = "username:" + username;
   string email_key = "email:" + email;
 

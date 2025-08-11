@@ -1,8 +1,8 @@
 #include "global.h"
 #include "lib.h"
 #include "utils.h"
-#include "./database/teamdatabase.h"
-#include "./database/userdatabase.h"
+#include "teamdatabase.h"
+#include "userdatabase.h"
 #include <iostream>
 #include <string>
 #include <cstring>
@@ -60,7 +60,7 @@ const string handlePOSTResponse(const HttpRequest &req)
     try
     {
       vector<string> parsed = split(req.data, "\\n");
-      UserDB::createUser(parsed[0], parsed[1]);
+      UserDB::createUser(parsed[0], parsed[1], parsed[2]);
     }
     catch (const std::runtime_error& e)
     {

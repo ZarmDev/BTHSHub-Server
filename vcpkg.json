@@ -1,13 +1,9 @@
 {
-    "dependencies": [
-        "pthreads",
-        "zlib",
-        {
-            "name": "argon2",
-            "version>=": "20190702"
-        },
-        "jwt-cpp",
-        "hiredis",
-        "redis-plus-plus"
-    ]
+  "dependencies": [
+    "hiredis",
+    "jwt-cpp",
+    "redis-plus-plus",
+    "libsodium",
+    "nlohmann-json"
+  ]
 }

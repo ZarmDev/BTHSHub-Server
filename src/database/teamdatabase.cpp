@@ -1,5 +1,5 @@
 #include "teamdatabase.h"
-#include "../global.h"
+#include "global.h"
 #include <ctime>
 #include <iostream>
 #define redis Global::db
