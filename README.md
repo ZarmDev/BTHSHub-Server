@@ -1,6 +1,12 @@
 # BTHSHub
 A server for Brooklyn Tech's app hub!
 
+# Why make this?
+- Lack of information on PSAL tryouts and a central place to find clubs, interests and sports for Freshmen
+<img width="1025" height="598" alt="image" src="https://github.com/user-attachments/assets/f3281740-1bda-45d2-ba66-421e99fef934" />
+- Lack of guides about what is and how to join the Math Team class, science olympiad, FRC 334
+- Confusing usage of Microsoft Teams for robotics but SportsYou for PSAL teams (which both have problems in themselves)
+
 # Installation (Arch Linux)
 1. Install redis
 sudo pacman -S
