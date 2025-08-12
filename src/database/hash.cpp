@@ -5,10 +5,6 @@
 
 using namespace std;
 
-    // if (sodium_init() < 0) {
-    //     cerr << "Failed to initialize libsodium" << endl;
-    //     return 1;
-    // }
 namespace Hash {
 string hashPassword(const string& password) {
     char hashed_password[crypto_pwhash_STRBYTES];
@@ -34,10 +30,10 @@ bool verifyPassword(const string& inputPassword, const string& hash) {
             inputPassword.c_str(),
             inputPassword.length()) == 0) {
         cout << "Password is correct!" << endl;
-    } else {
-        cout << "Password is incorrect!" << endl;
+        return true;
     }
 
-    return 0;
+    cout << "Password is incorrect!" << endl;
+    return false;
 }
 }

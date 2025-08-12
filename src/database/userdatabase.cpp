@@ -1,12 +1,12 @@
 #include "global.h"
-#include "jwt.h"
 #include "hash.h"
+#include "jwt.h"
+#include "utils.h"
 #define redis Global::db
 
 using namespace std;
 
 /* How the database SHOULD look like: (say we just created alice)
-// Redis keys and values
 // Redis keys and values
 {
   "user:42": {
@@ -23,19 +23,24 @@ using namespace std;
 */
 
 namespace UserDB {
-void createUser(const string &username, const string &password, const string &email) {
-  string username_key = "username:" + username;
+bool createUser(const string &username, const string &password,
+                const string &email) {
+  cout << password << '\n';
+  // Used for the flat key
+  string user_key = "user:" + username;
   string email_key = "email:" + email;
 
   // Check if username or email already exists
-  if (redis.exists(username_key) || redis.exists(email_key)) {
+  if (redis.exists(user_key) || redis.exists(email_key)) {
     cout << "Error: Username or email already exists." << endl;
-    return;
+    return false;
   }
 
   // Generate a new user ID (you can use an atomic counter or UUID)
   string user_id = to_string(redis.incr("user:id:counter"));
-  string user_key = "user:" + user_id;
+
+  // Used for the hash
+  string userhash_key = "userhash:" + user_id;
 
   // Hash the password securely
   string password_hash = Hash::hashPassword(password);
@@ -48,16 +53,15 @@ void createUser(const string &username, const string &password, const string &em
       {"password_hash", password_hash},
       {"status", "offline"},
       {"profile_picture_url", ""},
-      {"isAdmin", "false"}
-  };
-  redis.hmset(user_key, hash.begin(), hash.end());
+      {"isAdmin", "false"}};
+  redis.hmset(userhash_key, hash.begin(), hash.end());
 
   // Store user_tags (like "taking 3 APS" or "Stuyvesant reject")
   // string tags_key = user_key + ":tags";
   // This can be done later since we don't know what the user wants...
 
   // Index by username and email
-  redis.set(username_key, user_id);
+  redis.set(user_key, user_id);
   redis.set(email_key, user_id);
 
   // Add to global user sets
@@ -65,6 +69,7 @@ void createUser(const string &username, const string &password, const string &em
   // redis.zadd("users:by_created", user_id, time(nullptr));
 
   cout << "Created user '" << username << "' with ID " << user_id << endl;
+  return true;
 }
 
 // Add an existing user to an existing team
@@ -87,26 +92,34 @@ void addUserToTeam(long long user_id, long long team_id) {
 }
 
 string handle_login(const string &username, const string &password) {
+  // printContainer(users);
+  // printAllRedisKeys();
+  // cout << password << '\n';
+
+  string user_key = "user:" + username;
+
   // Step 1: Lookup user by username
-  OptionalString user_id_opt = redis.get("user:" + username);
+  OptionalString user_id_opt = redis.get(user_key);
   if (!user_id_opt) {
     // empty string means invalid username or password
+    cout << "user:" + username << " not found\n";
     return "";
   }
 
   string user_id = *user_id_opt;
+  string userhash_key = "userhash:" + user_id;
   cout << user_id << '\n';
   unordered_map<string, string> user_data;
-  redis.hgetall("user:" + user_id, inserter(user_data, user_data.begin()));
-  string stored_hash = user_data["password_hash"];
+  redis.hgetall(userhash_key, inserter(user_data, user_data.begin()));
+  cout << "Verifying password\n";
 
   // Step 2: Verify password
-  if (!JWT::verify_password(password, stored_hash)) {
-    return "";
+  if (!Hash::verifyPassword(password, user_data["password_hash"])) {
+    return ""; // Return empty string if password is
   }
 
   // Step 3: Generate JWT
-  string token = JWT::generate_token(user_id);
+  string token = JWT::generateToken(user_id);
 
   // Step 4: Return token
   return token;

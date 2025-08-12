@@ -1,7 +1,6 @@
-#include <jwt-cpp/jwt.h>
-#include <nlohmann/json.hpp>
-#include "jwt-cpp/traits/nlohmann-json/traits.h"
 #include "global.h"
+#include "jwt-cpp/traits/nlohmann-json/traits.h"
+#include <jwt-cpp/jwt.h>
 
 using namespace std;
 
@@ -22,20 +21,34 @@ using namespace std;
 // redis.hset("session:abc1
 using traits = jwt::traits::nlohmann_json;
 namespace JWT {
-const string generate_token(const string& user_id) {
-    return jwt::create<traits>()
-        .set_type("JWS")
-        .set_issuer("auth0")
-        .set_subject(user_id)
-        .set_issued_at(chrono::system_clock::now())
-        .set_expires_at(chrono::system_clock::now() + chrono::minutes{30})
-        .sign(jwt::algorithm::hs256{Global::JWT_SECRET});
+const string generateToken(const string &user_id) {
+  return jwt::create<traits>()
+      .set_type("JWS")
+      .set_issuer("auth0")
+      .set_subject(user_id)
+      .set_issued_at(chrono::system_clock::now())
+      .set_expires_at(chrono::system_clock::now() + chrono::minutes{30})
+      .sign(jwt::algorithm::hs256{Global::JWT_SECRET});
 }
 
-bool verify_password(const std::string& password, const std::string& stored_hash) {
-    auto decoded = jwt::decode<traits>(stored_hash);
+bool verifyPassword(const std::string &token, const std::string &stored_hash) {
+  try {
+    // Parse/decode the JWT token
+    auto decoded = jwt::decode<traits>(token);
 
-    for(auto& e : decoded.get_payload_json())
-        cout << e.first << " = " << e.second << '\n';
-} 
+    // Create a verifier
+    auto verifier = jwt::verify<traits>().with_issuer("auth0").allow_algorithm(
+        jwt::algorithm::hs256{Global::JWT_SECRET});
+
+    // Verify the token
+    verifier.verify(decoded);
+    return true;
+  } catch (const jwt::error::token_verification_exception &e) {
+    std::cout << "Token verification failed: " << e.what() << std::endl;
+    return false;
+  } catch (const std::exception &e) {
+    std::cout << "Error: " << e.what() << std::endl;
+    return false;
+  }
 }
+} // namespace JWT

@@ -15,12 +15,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build type if not specified
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE Debug)
 endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
@@ -52,15 +50,15 @@ if(STATIC_LIBSODIUM)
   set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
 endif()
 
-find_path(SODIUM_INCLUDE_DIR sodium.h HINTS ${LIBSODIUM_INCLUDE_DIRS} /usr/local/include /opt/local/include /opt/include)
-find_library(SODIUM_LIBRARY NAMES sodium HINTS ${LIBSODIUM_LIBRARY_DIRS} /usr/local/lib /opt/local/lib /opt/lib)
-message(STATUS "SODIUM_INCLUDE_DIR: ${SODIUM_INCLUDE_DIR}")
-message(STATUS "SODIUM_LIBRARY: ${SODIUM_LIBRARY}")
+# find_path(SODIUM_INCLUDE_DIR sodium.h HINTS ${LIBSODIUM_INCLUDE_DIRS} /usr/local/include /opt/local/include /opt/include)
+# find_library(SODIUM_LIBRARY NAMES sodium HINTS ${LIBSODIUM_LIBRARY_DIRS} /usr/local/lib /opt/local/lib /opt/lib)
+# message(STATUS "SODIUM_INCLUDE_DIR: ${SODIUM_INCLUDE_DIR}")
+# message(STATUS "SODIUM_LIBRARY: ${SODIUM_LIBRARY}")
 
-if(STATIC_LIBSODIUM)
-  set(LIBSODIUM_CFLAGS_OTHER ${LIBSODIUM_STATIC_CFLAGS_OTHER})
-  set(LIBSODIUM_LDFLAGS_OTHER ${LIBSODIUM_STATIC_LDFLAGS_OTHER})
-endif()
+# if(STATIC_LIBSODIUM)
+#   set(LIBSODIUM_CFLAGS_OTHER ${LIBSODIUM_STATIC_CFLAGS_OTHER})
+#   set(LIBSODIUM_LDFLAGS_OTHER ${LIBSODIUM_STATIC_LDFLAGS_OTHER})
+# endif()
 
 # Add precompiled headers
 add_library(project_options INTERFACE)
