@@ -51,7 +51,10 @@ and then
 ```
 cmake --build ./build
 ```
-
+# Plan
+1. Host on Heroku (for 24 months)
+2. Use name.com or namecheap github student offer
+3. It could also be hosted on AppWrite
 # TODO
 ## Client:
 - On the first startup, show the freshman guide. There is a google doc of things you wrote for freshmen. Then, tell them also about NHS tutoring and afterschool tutoring. 
