@@ -31,7 +31,7 @@ const string generateToken(const string &user_id) {
       .sign(jwt::algorithm::hs256{Global::JWT_SECRET});
 }
 
-bool verifyPassword(const std::string &token, const std::string &stored_hash) {
+bool verifyJWTToken(const std::string &token) {
   try {
     // Parse/decode the JWT token
     auto decoded = jwt::decode<traits>(token);

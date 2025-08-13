@@ -3,6 +3,7 @@
 #include "teamdatabase.h"
 #include "userdatabase.h"
 #include "utils.h"
+#include "jwt.h"
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -13,8 +14,9 @@
 
 using namespace std;
 
-// Global variables
+// Global in this file
 string dir;
+string adminPassword;
 
 void readEnv() {
   ifstream f("../.env");
@@ -29,6 +31,8 @@ void readEnv() {
     vector<string> vals = split(s, "=");
     if (vals[0] == "JWT_SECRET") {
       Global::JWT_SECRET = vals[1];
+    } else if (vals[0] == "ADMINPASS") {
+      adminPassword = vals[1];
     }
   }
 }
@@ -61,7 +65,7 @@ string loginRoute(const HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
   const string token = UserDB::handle_login(parsed[0], parsed[1]);
   if (token == "") {
-    return sendString("404 Not Found", "Invalid token");
+    return sendString("404 Not Found", "Invalid password or username");
   } else {
     return sendString("200 Success", token);
   }
@@ -74,26 +78,59 @@ string defaultRoute(const HttpRequest &req) {
   return response;
 }
 
+string getDailyAnnoucement(const HttpRequest &req) {
+  const string body = "";
+
+  const string response = sendString("200 OK", "");
+  return response;
+}
+
+bool protectJWT(const HttpRequest &req) {
+  return JWT::verifyJWTToken(req.data);
+}
+
+// TODO: Check if admin level is 3
+string setDailyAnnoucement(const HttpRequest &req) {
+  const string body = "";
+  
+  const string response = sendString("200 OK", "");
+  return response;
+}
+
 int main(int argc, char **argv) {
   readEnv();
   Server server;
   // server.setMaxCharLength(int);
+
   // https://github.com/varunarya002/codecrafters-http-server-cpp/blob/472d238d47d555645dc8d15081c45fbee8061006/src/server.cpp
   if (argc == 3 && strcmp(argv[1], "--directory") == 0) {
     dir = argv[2];
   }
   cout << "Assuming dir is " << (dir == "" ? "Empty" : dir) << '\n';
+  // Initalize libsodium in order to hash passwords
   if (sodium_init() < 0) {
     cerr << "Failed to initialize libsodium" << endl;
     return 1;
   }
+  // Initalize server on 4221
   server.init("4221");
 
-  // Put routes here
+  // Create an admin account
+  bool createAdmin = UserDB::createUser("admin", adminPassword, "");
+  if (!createAdmin) {
+    cout << "Failed to create admin. The DB is not working correctly.\n";
+  }
+
+  // not protected
   server.get("/", defaultRoute);
   server.post("/login", loginRoute);
   server.post("/createuser", createUserRoute);
+
+  server.use(protectJWT);
+  // protected with JWT token
   server.post("/createteam", createTeamRoute);
+  server.get("/getdailyannoucement", getDailyAnnoucement);
+  server.post("/setdailyannoucement", setDailyAnnoucement);
 
   server.start();
 

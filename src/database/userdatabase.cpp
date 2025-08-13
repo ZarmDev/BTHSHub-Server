@@ -7,19 +7,23 @@
 using namespace std;
 
 /* How the database SHOULD look like: (say we just created alice)
-// Redis keys and values
 {
   "user:42": {
     "username": "alice",
     "email": "alice@example.com",
     "created_at": "1723228800",
-    "password_hash": "$2b$12$..."
+    "password_hash": "$2b$12$...",
+    "status": "offline",
+    "profile_picture_url": "",
+    "adminLevel": "0"
   },
   "username:alice": "42",
   "email:alice@example.com": "42",
   "users:all": Set(["42", "43", ...]),
   "users:by_created": SortedSet({ "42": 1723228800, ... })
 }
+NOTES:
+adminLevel - 0 means no permissions, 1 means an app moderator, 2 means all permission admin
 */
 
 namespace UserDB {
@@ -53,7 +57,7 @@ bool createUser(const string &username, const string &password,
       {"password_hash", password_hash},
       {"status", "offline"},
       {"profile_picture_url", ""},
-      {"isAdmin", "false"}};
+      {"adminLevel", "0"}};
   redis.hmset(userhash_key, hash.begin(), hash.end());
 
   // Store user_tags (like "taking 3 APS" or "Stuyvesant reject")
@@ -70,6 +74,31 @@ bool createUser(const string &username, const string &password,
 
   cout << "Created user '" << username << "' with ID " << user_id << endl;
   return true;
+}
+
+string getUserId(const string& user_key) {
+  OptionalString user_id_opt = redis.get(user_key);
+  if (!user_id_opt) {
+    // empty string means invalid username or password
+    cout << user_key << " not found\n";
+    return "";
+  }
+
+  string user_id = *user_id_opt;
+  return user_id;
+}
+
+bool grantAdminLevel(const string& username, string level) {
+  string user_key = "user:" + username;
+  string user_id = getUserId(user_key);
+
+  string userhash_key = "userhash:" + user_id;
+
+  // Will update only adminLevel
+  unordered_map<string, string> update = {
+    {"adminLevel", level}
+  };
+  redis.hmset(userhash_key, update.begin(), update.end());
 }
 
 // Add an existing user to an existing team
@@ -99,14 +128,8 @@ string handle_login(const string &username, const string &password) {
   string user_key = "user:" + username;
 
   // Step 1: Lookup user by username
-  OptionalString user_id_opt = redis.get(user_key);
-  if (!user_id_opt) {
-    // empty string means invalid username or password
-    cout << "user:" + username << " not found\n";
-    return "";
-  }
-
-  string user_id = *user_id_opt;
+  string user_id = getUserId(user_key);
+  
   string userhash_key = "userhash:" + user_id;
   cout << user_id << '\n';
   unordered_map<string, string> user_data;

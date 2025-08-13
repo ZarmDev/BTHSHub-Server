@@ -81,7 +81,7 @@ bool Server::init(const string &port) {
 
   if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) !=
       0) {
-    cerr << "Failed to bind to port 4221\n";
+    cerr << "Failed to bind to port " + port + "\n";
     return false;
   }
 
@@ -91,6 +91,8 @@ bool Server::init(const string &port) {
     return false;
   }
 
+  cout << "Binded server on port: " + port + "\n";
+
   return true;
 }
 bool Server::start() {
@@ -99,8 +101,6 @@ bool Server::start() {
   // This tells the accept function that the struct is x bytes. It doesn't
   // change on new requests, this is just for the compiler to know
   int client_addr_len = sizeof(client_addr);
-
-  cout << "Waiting for a client to connect...\n";
 
   while (true) {
     int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
@@ -274,7 +274,14 @@ string Server::handleRequest(const HttpRequest &req) {
     }
   }
   if (req.method == "GET") {
-
+    // This just finds the requested URL in the map with routes
+    auto it = getRoutes.find(req.url);
+    if (it != getRoutes.end()) {
+      // Access the function using it->second and call it with the request
+      return it->second(req);
+    } else {
+      return sendString("404 Not Found", "");
+    }
   } else if (req.method == "POST") {
     // This just finds the requested URL in the map with routes
     auto it = postRoutes.find(req.url);

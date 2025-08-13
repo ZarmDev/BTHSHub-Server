@@ -3,12 +3,11 @@
 
 using namespace std;
 
-#pragma once
-
 #include <functional>
-#include <string>
 #include <unordered_map>
 #include <string>
+#include <optional>
+#include <vector>
 
 // Request struct
 struct HttpRequest {
