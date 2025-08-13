@@ -14,6 +14,44 @@ https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_b
 - Confusing usage of Microsoft Teams (which is a really bad app) for robotics but SportsYou for PSAL teams (which both have problems in themselves)
 - I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code... (which apparently is given by the coach?)
 
+# Installation
+## Linux
+### Install vcpkg
+```
+# follow instructions on the vcpkg Github and then run this to add to your path
+export VCPKG_ROOT=/workspaces/BTHSHub-Server/vcpkg
+```
+### Install ninja
+> Debian based
+```
+sudo apt update
+sudo apt install -y ninja-build build-essential
+```
+### Install libsodium
+> Debian based
+```
+sudo apt install -y libsodium-dev
+```
+> Arch (already installed)
+### Follow steps in "First time" and then "Development"
+
+# First time (development)
+1. Ensure you have Cmake extension in Vscode or run cmake in the CLI
+2. Run ```openssl rand -hex 32``` in order to get a private key. Then, put in a .env file like so:
+# Development
+1. Run the redis server
+```
+redis-server &
+```
+2. Use the run button at the bottom in vscode or use the Cmake CLI commands below:
+```
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=[put-your-vcpkg-root]/scripts/buildsystems/vcpkg.cmake
+```
+and then
+```
+cmake --build ./build
+```
+
 # TODO
 ## Client:
 - On the first startup, show the freshman guide. There is a google doc of things you wrote for freshmen. Then, tell them also about NHS tutoring and afterschool tutoring. 
@@ -37,57 +75,5 @@ https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_b
 - Store BTHS daily announcements and send in a nice format to phones
 - Implement club credit system and club directory
 
-# Installation (Arch Linux)
-1. Install redis
-sudo pacman -S
-2. Install hiredis
-```
-pacman -S hiredis
-```
-OR
-```
-git clone https://github.com/redis/hiredis.git
-cd hiredis
-make
-sudo make install
-```
-3. Install redis-plus-plus
-```
-git clone https://github.com/sewenew/redis-plus-plus.git
-cd redis-plus-plus
-mkdir build && cd build
-cmake ..
-make
-sudo make install
-```
-4. Install jwt-cpp
-git clone https://github.com/Thalhammer/jwt-cpp.git
-cd jwt-cpp
-cmake .
-cmake --build .
-cmake --install .
-5. Update linker cache
-```
-sudo ldconfig
-```
-6. Also remember to add vcpkg to the toolchain: cmake -DCMAKE_TOOLCHAIN_FILE=[vcpkglocation]/scripts/buildsystems/vcpkg.cmake .
-
-You only need to run this once, or whenever:
-- You change your dependencies
-- You change your toolchain
-- You delete your build/ folder
-7. Run ```openssl rand -hex 32``` in order to get a private key. Then, put in a .env file like so:
-
-```
-JWT_SECRET=xxx...
-```
-8. Follow steps below in "Development"
-# Development
-1. Ensure you have Cmake extension in Vscode or run cmake in the CLI
-2. Run the redis server
-```
-redis-server &
-```
-3. Use the run button at the bottom in vscode or use the Cmake CLI
 # Production notes
 Make sure to rotate JWT_SECRET every x days. Maybe write a cron job?

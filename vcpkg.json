@@ -3,7 +3,6 @@
     "hiredis",
     "jwt-cpp",
     "redis-plus-plus",
-    "libsodium",
     "nlohmann-json"
   ]
 }

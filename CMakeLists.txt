@@ -96,7 +96,7 @@ target_link_libraries(server PRIVATE
   pthread
   jwt-cpp::jwt-cpp
   nlohmann_json::nlohmann_json
-  ${SODIUM_LIBRARY} ${LIBSODIUM_LDFLAGS_OTHER}
+  ${LIBSODIUM_LIBRARIES}
 )
 
 # Compiler warnings

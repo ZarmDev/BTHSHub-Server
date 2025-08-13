@@ -21,7 +21,7 @@ void readEnv() {
 
   if (!f.is_open()) {
     cerr << "You did not properly set the .env file. See README.md for more "
-            "information.";
+            "information.\n";
   }
   string s;
 

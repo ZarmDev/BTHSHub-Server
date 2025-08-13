@@ -1,7 +1,6 @@
 // Use header guard to prevent linker issues in server.cpp
 #pragma once
 
-#include <string>
 using namespace std;
 
 #pragma once
@@ -9,6 +8,7 @@ using namespace std;
 #include <functional>
 #include <string>
 #include <unordered_map>
+#include <string>
 
 // Request struct
 struct HttpRequest {
