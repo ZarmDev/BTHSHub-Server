@@ -89,7 +89,7 @@ void addUserToTeam(long long user_id, long long team_id) {
   redis.zadd(user_teams_key + ":by_joined", to_string(user_id), now);
 
   cout << "Added user " << user_id << " to team " << team_id << endl;
-}
+}     
 
 string handle_login(const string &username, const string &password) {
   // printContainer(users);

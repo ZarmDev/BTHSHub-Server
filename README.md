@@ -4,11 +4,15 @@ A server for Brooklyn Tech's app hub!
 # Why make this?
 - Lack of information on PSAL tryouts and a central place to find clubs, interests and sports for Freshmen
 
-<img width="1025" height="598" alt="image" src="https://github.com/user-attachments/assets/f3281740-1bda-45d2-ba66-421e99fef934" />
+https://www.reddit.com/r/BTHS/comments/1mm0aef/when_are_girls_varsity_tennis_tryouts/
+
+https://www.reddit.com/r/BTHS/comments/1m6w5f9/kids_on_the_math_team_do_you_wanna_slide_over/
+
+https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_btech/
 
 - Lack of guides about what is and how to join the Math Team class, science olympiad, FRC 334
 - Confusing usage of Microsoft Teams (which is a really bad app) for robotics but SportsYou for PSAL teams (which both have problems in themselves)
-- I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code... (which apparently is given by the coach??)
+- I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code... (which apparently is given by the coach?)
 
 # TODO
 ## Client:
@@ -23,11 +27,15 @@ A server for Brooklyn Tech's app hub!
 - Contains a way to share schedules with other students (if time permits) and a calendar like Saturn
 - Add discussion groups for classes that you can join using a code or just freely join but ensure that teachers CANNOT join it. Allow users to be anonymous but also allow a moderator who can perma ban accounts
 - Add a group called proposals, crushes, confessions and moderators. Proposals is where you can vote like reddit on proposals to do
+- Add discussions/guides part of the site and course discussions/FAQ. I think the best way is if we had a google classroom like UI which has different groups (not to be confused with teams) that had all the courses listed, the teachers there and FAQs about it
+- Add events
+- Add a teacher appreciation part where you can nominate teachers and they get awards
 ## Server:
 - The website will be a route accepting a username and passcode which will be rate limited heavily (3 attempts per week)
 - The website will be made in C++ to be extremely fast and reliable
 - Add admins/moderates like teachers
 - Store BTHS daily announcements and send in a nice format to phones
+- Implement club credit system and club directory
 
 # Installation (Arch Linux)
 1. Install redis

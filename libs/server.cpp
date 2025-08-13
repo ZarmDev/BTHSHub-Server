@@ -33,62 +33,45 @@ void readEnv() {
   }
 }
 
-const string handleGETResponse(const HttpRequest &req) {
-  if (req.url == "/") {
-    const string body = "";
-
-    const string response = sendString("200 OK", "");
-    return response;
-  }
-  // Else condition
-  return sendString("404 Not Found", "");
+string createTeamRoute(const HttpRequest &req) {
+  TeamDB::createTeam("test");
+  unordered_set<string> teams = TeamDB::getAllTeams();
+  printContainer(teams);
+  printContainer(TeamDB::getTeamInfo(1));
 }
 
-const string handlePOSTResponse(const HttpRequest &req) {
-  if (startsWith(req.url, "/createteam")) {
-    TeamDB::createTeam("test");
-    unordered_set<string> teams = TeamDB::getAllTeams();
-    printContainer(teams);
-    printContainer(TeamDB::getTeamInfo(1));
-  } else if (startsWith(req.url, "/createuser")) {
-    try {
-      vector<string> parsed = split(req.data, "\n");
-      printContainer(parsed);
-      bool createUserAttempt = UserDB::createUser(parsed[0], parsed[1], parsed[2]);
-      if (createUserAttempt) {
-        return sendString("200 Success", "Successfully created the user!");
-      } else {
-        return sendString("404 Not Found", "Unable to create user");
-      }
-    } catch (const std::runtime_error &e) {
-      cerr << "Redis error: " << e.what() << endl;
-      return sendString("404 Not Found", "An error occured on our side");
-    }
-  } else if (startsWith(req.url, "/login")) {
-    vector<string> parsed = split(req.data, "\n");
-    const string token = UserDB::handle_login(parsed[0], parsed[1]);
-    if (token == "") {
-      return sendString("404 Not Found", "Invalid token");
-    } else {
-      return sendString("200 Success", token);
-    }
-  }
-  // Else condition
-  return sendString("404 Not Found", "");
-}
-
-const string middleware(const HttpRequest &req) {
+string createUserRoute(const HttpRequest &req) {
   try {
-    if (req.method == "GET") {
-      return handleGETResponse(req);
-    } else if (req.method == "POST") {
-      return handlePOSTResponse(req);
+    vector<string> parsed = split(req.data, "\n");
+    printContainer(parsed);
+    bool createUserAttempt =
+        UserDB::createUser(parsed[0], parsed[1], parsed[2]);
+    if (createUserAttempt) {
+      return sendString("200 Success", "Successfully created the user!");
+    } else {
+      return sendString("404 Not Found", "Unable to create user");
     }
-  } catch (int err) {
-    // Else condition
-    const string response = sendString("404 Not Found", "");
-    return response;
+  } catch (const std::runtime_error &e) {
+    cerr << "Redis error: " << e.what() << endl;
+    return sendString("404 Not Found", "An error occured on our side");
   }
+}
+
+string loginRoute(const HttpRequest &req) {
+  vector<string> parsed = split(req.data, "\n");
+  const string token = UserDB::handle_login(parsed[0], parsed[1]);
+  if (token == "") {
+    return sendString("404 Not Found", "Invalid token");
+  } else {
+    return sendString("200 Success", token);
+  }
+}
+
+string defaultRoute(const HttpRequest &req) {
+  const string body = "";
+
+  const string response = sendString("200 OK", "");
+  return response;
 }
 
 int main(int argc, char **argv) {
@@ -104,7 +87,15 @@ int main(int argc, char **argv) {
     cerr << "Failed to initialize libsodium" << endl;
     return 1;
   }
-  server.init();
-  server.start(middleware);
+  server.init("4221");
+
+  // Put routes here
+  server.get("/", defaultRoute);
+  server.post("/login", loginRoute);
+  server.post("/createuser", createUserRoute);
+  server.post("/createteam", createTeamRoute);
+
+  server.start();
+
   return 0;
 }
