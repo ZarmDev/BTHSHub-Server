@@ -423,7 +423,7 @@ vector<Day> parseSchedule(const string &text) {
       break;
     case PARSER::TEACHER:
       // Remove whitespace, sometimes there is more or less whitespace
-      if (text.at(i) == ' ') {
+      if (isdigit(text.at(i))) {
         cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
         currentCourse.teacher = text.substr(teacherIdx, i - teacherIdx);
         state = PARSER::TIME;
