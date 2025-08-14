@@ -3,6 +3,7 @@
     "hiredis",
     "jwt-cpp",
     "redis-plus-plus",
-    "nlohmann-json"
+    "nlohmann-json",
+    "podofo"
   ]
 }

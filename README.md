@@ -17,12 +17,22 @@ https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_b
 # Installation
 ## Linux
 ### Install vcpkg
+> All linux distributions
 ```
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 ./bootstrap-vcpkg.sh --disableMetrics
-export VCPKG_ROOT=/workspaces/BTHSHub-Server/vcpkg
+nano ~./bashrc
 ```
+add this to ~./bashrc
+```
+export VCPKG_ROOT=[your-vcpkg-root]
+```
+then run
+```
+source ~/.bashrc
+```
+> IF THIS DOES NOT WORK THEN EDIT CMakePresets.json and add your root rather than it having ```$env{VCPKG_ROOT}```
 ### Install ninja
 > Debian based
 ```
@@ -34,8 +44,12 @@ sudo apt install -y ninja-build build-essential
 ```
 sudo apt install redis-server
 ```
+> Arch
+```
+sudo pacman -S redis
+```
 > All linux distributions
-You may have to enable it as system service
+You may have to enable it as system service (personally, I didn't have to)
 ```
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
@@ -45,7 +59,10 @@ sudo systemctl start redis-server
 ```
 sudo apt install -y libsodium-dev
 ```
-> Arch (already installed)
+> Arch
+```
+sudo pacman -S libsodium
+```
 ### Follow steps in "First time" and then "Development"
 
 # First time (development)
@@ -78,12 +95,14 @@ For more ideas, see ideas.md
 ## Server: (base goals)
 ✅ The website will be made in C++ to be extremely fast and reliable
 ✅ User authentication with JWT Tokens
-❌ Add rate limiting
-❌ Store BTHS daily announcements and send in a nice format to phones
-❌ Add admins/moderators like teachers
+❌ Add team functionality
+❌ Add admins/moderators like teachers who can edit permissions for users and delete teams
+❌ Have all team creations be sent to admins
 
 ## Future: (AFTER APP IS MADE!)
 ❌ Implement club credit system and club directory
+❌ Store BTHS daily announcements and send in a nice format to phones
+❌ Add rate limiting
 
 # Production notes
 ## Optimizations

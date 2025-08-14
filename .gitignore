@@ -1,7 +1,12 @@
+ProgramCard.pdf
 # env file
 .env
 # cache
 .cache
+# preset
+CMakePresets.json
+#redis
+dump.rdb
 
 # Build directory (CMake generated files)
 build/

@@ -1,7 +1,9 @@
 #include "global.h"
 #include "hash.h"
 #include "jwt.h"
-#include "utils.h"
+#include "pdf.h"
+#include <nlohmann/json.hpp>
+
 #define redis Global::db
 
 using namespace std;
@@ -120,7 +122,7 @@ void addUserToTeam(long long user_id, long long team_id) {
   cout << "Added user " << user_id << " to team " << team_id << endl;
 }     
 
-string handle_login(const string &username, const string &password) {
+string handleLogin(const string &username, const string &password) {
   // printContainer(users);
   // printAllRedisKeys();
   // cout << password << '\n';
@@ -148,3 +150,18 @@ string handle_login(const string &username, const string &password) {
   return token;
 }
 } // namespace UserDB
+
+// Store in Redis (written by AI)
+void storeScheduleInRedis(const vector<Day>& schedule) {
+    nlohmann::json j = PDF::scheduleToJson(schedule);
+    string jsonString = j.dump();
+    
+    // Store the entire schedule as one key
+    redis.set("student_schedule", jsonString);
+    
+    // Or store each day separately for faster individual day access
+    for (const auto& day : schedule) {
+        nlohmann::json dayJson = PDF::scheduleToJson({day});
+        redis.set("schedule_day_" + to_string(day.dayNumber), dayJson.dump());
+    }
+}

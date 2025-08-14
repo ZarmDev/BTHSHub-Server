@@ -36,29 +36,10 @@ find_package(jwt-cpp CONFIG REQUIRED)
 find_package(redis++ CONFIG REQUIRED)
 find_package(hiredis CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(podofo CONFIG REQUIRED)
 find_package(PkgConfig REQUIRED)
 # Taken from minisign
 pkg_check_modules(LIBSODIUM libsodium)
-message(STATUS "LIBSODIUM_CFLAGS: ${LIBSODIUM_CFLAGS}")
-message(STATUS "LIBSODIUM_LDFLAGS: ${LIBSODIUM_LDFLAGS}")
-
-if(STATIC_LIBSODIUM)
-  if(BUILD_STATIC_EXECUTABLES)
-    set_target_properties(minisign PROPERTIES LINK_SEARCH_START_STATIC 1)
-    set_target_properties(minisign PROPERTIES LINK_SEARCH_END_STATIC 1)
-  endif()
-  set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
-endif()
-
-# find_path(SODIUM_INCLUDE_DIR sodium.h HINTS ${LIBSODIUM_INCLUDE_DIRS} /usr/local/include /opt/local/include /opt/include)
-# find_library(SODIUM_LIBRARY NAMES sodium HINTS ${LIBSODIUM_LIBRARY_DIRS} /usr/local/lib /opt/local/lib /opt/lib)
-# message(STATUS "SODIUM_INCLUDE_DIR: ${SODIUM_INCLUDE_DIR}")
-# message(STATUS "SODIUM_LIBRARY: ${SODIUM_LIBRARY}")
-
-# if(STATIC_LIBSODIUM)
-#   set(LIBSODIUM_CFLAGS_OTHER ${LIBSODIUM_STATIC_CFLAGS_OTHER})
-#   set(LIBSODIUM_LDFLAGS_OTHER ${LIBSODIUM_STATIC_LDFLAGS_OTHER})
-# endif()
 
 # Add precompiled headers
 add_library(project_options INTERFACE)
@@ -96,6 +77,7 @@ target_link_libraries(server PRIVATE
   pthread
   jwt-cpp::jwt-cpp
   nlohmann_json::nlohmann_json
+  podofo::podofo
   ${LIBSODIUM_LIBRARIES}
 )
 

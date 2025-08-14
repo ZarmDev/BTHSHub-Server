@@ -1,15 +1,18 @@
 #include "global.h"
+#include "jwt.h"
 #include "lib.h"
+#include "pdf.h"
 #include "teamdatabase.h"
 #include "userdatabase.h"
 #include "utils.h"
-#include "jwt.h"
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sodium.h>
 #include <stdexcept>
 #include <string>
+#include <vector>
+
 #define redis Global::db
 
 using namespace std;
@@ -63,7 +66,7 @@ string createUserRoute(const HttpRequest &req) {
 
 string loginRoute(const HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
-  const string token = UserDB::handle_login(parsed[0], parsed[1]);
+  const string token = UserDB::handleLogin(parsed[0], parsed[1]);
   if (token == "") {
     return sendString("404 Not Found", "Invalid password or username");
   } else {
@@ -92,12 +95,18 @@ bool protectJWT(const HttpRequest &req) {
 // TODO: Check if admin level is 3
 string setDailyAnnoucement(const HttpRequest &req) {
   const string body = "";
-  
+
   const string response = sendString("200 OK", "");
   return response;
 }
 
+
 int main(int argc, char **argv) {
+  // Remember to check the file size because if it's too big they clearly are slowing down the server
+  const string text = PDF::getPDFText("../src/ProgramCard.pdf");
+  vector<Day> parsed = PDF::parseSchedule(text);
+
+  return 1;
   readEnv();
   Server server;
   // server.setMaxCharLength(int);
