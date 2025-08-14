@@ -4,11 +4,11 @@
 
 #include "global.h"
 #include "utils.h"
+#include <cctype>
 #include <ios>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <podofo/podofo.h>
-#include <cctype>
 
 using namespace PoDoFo;
 using namespace std;
@@ -19,8 +19,9 @@ string parseContentStream(const string &content) {
   string text = "";
   size_t pos = 0;
   bool inTextObject = false;
-
-  // cout << "DEBUG: Parsing content stream..." << endl;
+  float lastYPosition = -1;
+  float lastXPosition = -1;
+  float expectedCellWidth = 160.0; // Adjust based on your PDF's cell width
 
   while (pos < content.length()) {
     // Skip whitespace
@@ -35,7 +36,6 @@ string parseContentStream(const string &content) {
     if (pos + 1 < content.length() && content.substr(pos, 2) == "BT" &&
         (pos + 2 >= content.length() || isspace(content[pos + 2]))) {
       inTextObject = true;
-      // cout << "DEBUG: Found BT (begin text)" << endl;
       pos += 2;
       continue;
     }
@@ -43,18 +43,79 @@ string parseContentStream(const string &content) {
     if (pos + 1 < content.length() && content.substr(pos, 2) == "ET" &&
         (pos + 2 >= content.length() || isspace(content[pos + 2]))) {
       inTextObject = false;
-      // cout << "DEBUG: Found ET (end text)" << endl;
       pos += 2;
       continue;
     }
 
     if (inTextObject) {
+      if (pos + 1 < content.length() &&
+          (content.substr(pos, 2) == "Td" || content.substr(pos, 2) == "TD")) {
+
+        // Look backwards for TWO numbers before Td/TD
+        // PDF format is typically: "x y Td"
+        size_t searchEnd = pos;
+        while (searchEnd > 0 && isspace(content[searchEnd - 1]))
+          searchEnd--;
+
+        // Find the end of the second number (Y coordinate)
+        size_t yEnd = searchEnd;
+        while (yEnd > 0 &&
+               (isdigit(content[yEnd - 1]) || content[yEnd - 1] == '.' ||
+                content[yEnd - 1] == '-')) {
+          yEnd--;
+        }
+
+        // Skip whitespace between numbers
+        size_t yStart = yEnd;
+        while (yStart > 0 && isspace(content[yStart - 1]))
+          yStart--;
+
+        // Find the end of the first number (X coordinate)
+        size_t xEnd = yStart;
+        while (xEnd > 0 &&
+               (isdigit(content[xEnd - 1]) || content[xEnd - 1] == '.' ||
+                content[xEnd - 1] == '-')) {
+          xEnd--;
+        }
+
+        // Extract both coordinates
+        string xStr = content.substr(xEnd, yStart - xEnd);
+        string yStr = content.substr(yEnd, searchEnd - yEnd);
+
+        // cout << "Trying to parse X: '" << xStr << "' Y: '" << yStr << "'"
+        //      << endl;
+
+        try {
+          float x = stof(xStr);
+          float y = stof(yStr);
+
+          // cout << "Parsed coordinates: " << x << " " << y << endl;
+
+          // Calculate gap from last position
+          if (lastXPosition != -1) {
+            float xGap = abs(x - lastXPosition);
+            // cout << "X Gap: " << xGap << endl;
+            if (xGap > expectedCellWidth) {
+              text += "<<EMPTY_CELL>> ";
+            }
+          }
+          lastXPosition = x;
+          lastYPosition = y;
+        } catch (const invalid_argument &e) {
+          cout << "Failed to parse coordinates" << endl;
+        }
+
+        pos += 2;
+        continue;
+      }
+
+      // ... your existing text extraction code ...
+
       // Look for text strings in parentheses
       if (content[pos] == '(') {
         size_t endPos = pos + 1;
         int parenCount = 1;
 
-        // Find matching closing parenthesis, handling nested ones
         while (endPos < content.length() && parenCount > 0) {
           if (content[endPos] == '(')
             parenCount++;
@@ -66,8 +127,6 @@ string parseContentStream(const string &content) {
         if (parenCount == 0) {
           string textContent = content.substr(pos + 1, endPos - pos - 2);
           text += textContent + " ";
-          // cout << "DEBUG: Found text in parentheses: '" << textContent << "'"
-          //  << endl;
         }
         pos = endPos;
         continue;
@@ -78,7 +137,6 @@ string parseContentStream(const string &content) {
         size_t endPos = pos + 1;
         int bracketCount = 1;
 
-        // Find matching closing bracket
         while (endPos < content.length() && bracketCount > 0) {
           if (content[endPos] == '[')
             bracketCount++;
@@ -89,10 +147,7 @@ string parseContentStream(const string &content) {
 
         if (bracketCount == 0) {
           string arrayContent = content.substr(pos + 1, endPos - pos - 2);
-          // cout << "DEBUG: Found array content: [" << arrayContent << "]"
-          //  << endl;
 
-          // Extract text from the array (simplified - look for parentheses)
           size_t arrayPos = 0;
           while (arrayPos < arrayContent.length()) {
             size_t parenStart = arrayContent.find('(', arrayPos);
@@ -106,8 +161,6 @@ string parseContentStream(const string &content) {
             string textContent =
                 arrayContent.substr(parenStart + 1, parenEnd - parenStart - 1);
             text += textContent + " ";
-            // cout << "DEBUG: Extracted from array: '" << textContent << "'"
-            //  << endl;
 
             arrayPos = parenEnd + 1;
           }
@@ -120,8 +173,6 @@ string parseContentStream(const string &content) {
       if (content[pos] == '<') {
         size_t endPos = content.find('>', pos);
         if (endPos != string::npos) {
-          string hexString = content.substr(pos + 1, endPos - pos - 1);
-          // cout << "DEBUG: Found hex string: <" << hexString << ">" << endl;
           pos = endPos + 1;
           continue;
         }
@@ -132,7 +183,6 @@ string parseContentStream(const string &content) {
     pos++;
   }
 
-  // cout << "DEBUG: Final extracted text: '" << text << "'" << endl;
   return text;
 }
 
@@ -289,19 +339,25 @@ vector<Day> parseSchedule(const string &text) {
   bool isGym = false;
   // state based on enum
   PARSER state = PARSER::PERIOD;
-  // 1 UKS21XA/71  AP COMPUTER SCI Room  3W04 SMITH  8:05- 8:46 repeat...UKS21XA/71
-  // period classID course roomtext room teacher time 
+  // 1 UKS21XA/71  AP COMPUTER SCI Room  3W04 SMITH  8:05- 8:46
+  // repeat...UKS21XA/71 period classID course roomtext room teacher time
 
   vector<Course> courses;
   courses.reserve(10);
-  
-  // 4 ZL/4  LUNCH Room CAFE No Teacher 10:23-11:04 ZL/4 
+
+  // 4 ZL/4  LUNCH Room CAFE No Teacher 10:23-11:04 ZL/4
   // period classID course roomtext room teacher time
   cout << "In parsed schedule\n";
+  constexpr int sizeOfEmptyCell = 15;
   for (size_t i = text.find("Day 10") + 7; i < text.length(); i++) {
     // if (i > 500) {return parsedSchedule;}
     switch (state) {
     case PARSER::PERIOD:
+      // We should expect to see an empty cell
+      if (text.at(i) == '<') {
+        i += sizeOfEmptyCell;
+        continue;
+      }
       periodNum++;
       state = PARSER::COURSEID;
       cout << "Period: " << text.at(i) << "e\n";
@@ -319,6 +375,17 @@ vector<Day> parseSchedule(const string &text) {
       }
       break;
     case PARSER::COURSE:
+      if (text.at(i) == '<') {
+        i += sizeOfEmptyCell;
+        courseCount++;
+        // If the edge case is that the last column has an empty course, we just go to PARSER::PERIOD while skipping the empty cell
+        if (courseCount == 10) {
+          state = PARSER::PERIOD;
+        } else {
+          state = PARSER::COURSEID;
+        }
+        continue;
+      }
       // When parsing here, wait until you see "Room"
       // You should expect that every 10 COURSES, you will see the period number
       // which you can note
@@ -371,9 +438,12 @@ vector<Day> parseSchedule(const string &text) {
         i++;
         if (courseCount == 10) {
           state = PARSER::PERIOD;
-        } else if (isdigit(text.at(i + 1))) { // Check for edge case when you have a free period on the cycle day
-          // That means that we already reached the period and there is empty classes in that row
-          // we need to clarify this and ask the user for mroe information
+        } else if (isdigit(
+                       text.at(i + 1))) { // Check for edge case when you have a
+                                          // free period on the cycle day
+          // That means that we already reached the period and there is empty
+          // classes in that row we need to clarify this and ask the user for
+          // mroe information
         } else {
           state = PARSER::COURSEID;
           courseIDIdx = i;
