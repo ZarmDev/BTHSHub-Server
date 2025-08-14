@@ -4,10 +4,11 @@
 
 #include "global.h"
 #include "utils.h"
+#include <array>
 #include <cctype>
-#include <ios>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <podofo/main/PdfDeclarations.h>
 #include <podofo/podofo.h>
 
 using namespace PoDoFo;
@@ -324,77 +325,86 @@ vector<Day> parseSchedule(const string &text) {
   ]
   */
   vector<Day> parsedSchedule;
-  parsedSchedule.reserve(10);
   // helper variables
-  int periodNum = 0;
+  // this also signifies the row
+  int periodNum = -1;
   int courseIDIdx;
   int courseIdx;
   int roomIdx;
   int teacherIdx;
   int timeIdx;
-  // this also signifies the cycle day of the week
-  int courseCount = 0;
+  // this also signifies the cycle day of the week (or column)
+  int courseCount = -1;
   int idxRoom;
   int teacherHelper;
-  bool isGym = false;
   // state based on enum
   PARSER state = PARSER::PERIOD;
   // 1 UKS21XA/71  AP COMPUTER SCI Room  3W04 SMITH  8:05- 8:46
   // repeat...UKS21XA/71 period classID course roomtext room teacher time
 
-  vector<Course> courses;
-  courses.reserve(10);
+  array<array<Course, 10>, 10> coursesRow;
+
+  Course currentCourse;
 
   // 4 ZL/4  LUNCH Room CAFE No Teacher 10:23-11:04 ZL/4
   // period classID course roomtext room teacher time
   cout << "In parsed schedule\n";
-  constexpr int sizeOfEmptyCell = 15;
-  for (size_t i = text.find("Day 10") + 7; i < text.length(); i++) {
+  // Size of <<EMPTY_CELL>> plus a space
+  constexpr int sizeOfEmptyCell = 14;
+  for (size_t i = text.find("Day 10") + sizeOfEmptyCell + 8; i < text.length(); i++) {
     // if (i > 500) {return parsedSchedule;}
     switch (state) {
     case PARSER::PERIOD:
       // We should expect to see an empty cell
-      if (text.at(i) == '<') {
-        i += sizeOfEmptyCell;
-        continue;
-      }
+      // if (text.at(i) == '<') {
+      //   i += sizeOfEmptyCell;
+      //   continue;
+      // }
       periodNum++;
       state = PARSER::COURSEID;
-      cout << "Period: " << text.at(i) << "e\n";
+      cout << "||||||||||||Period: " << text.at(i) << "e||||||||||||\n";
       // skip the space
       i += 2;
       courseIDIdx = i;
       break;
     case PARSER::COURSEID:
+      if (text.at(i) == '<') {
+        cout << "|Day " << courseCount + 2 << "|\n";
+        i += sizeOfEmptyCell;
+        courseCount++;
+        cout << "FREE PERIOD\n";
+        // If the edge case is that the last column has an empty course, we just
+        // go to PARSER::PERIOD while skipping the empty cell
+        if (courseCount == 9) {
+          state = PARSER::PERIOD;
+          currentCourse = Course();
+          currentCourse.courseName = "Free period";
+          coursesRow[periodNum][courseCount] = currentCourse;
+          courseCount = 0;
+        } else {
+          currentCourse.courseName = "Free period";
+          state = PARSER::COURSEID;
+          courseIDIdx = i;
+        }
+        continue;
+      }
       if (text.at(i) == ' ') {
-        cout << '|';
+        cout << "|Day " << courseCount + 2 << "|\n";
         cout << text.substr(courseIDIdx, i - courseIDIdx) << "e\n";
+        currentCourse.courseId = text.substr(courseIDIdx, i - courseIDIdx);
         state = PARSER::COURSE;
         idxRoom = text.find("Room", i);
         courseIdx = i;
       }
       break;
     case PARSER::COURSE:
-      if (text.at(i) == '<') {
-        i += sizeOfEmptyCell;
-        courseCount++;
-        // If the edge case is that the last column has an empty course, we just go to PARSER::PERIOD while skipping the empty cell
-        if (courseCount == 10) {
-          state = PARSER::PERIOD;
-        } else {
-          state = PARSER::COURSEID;
-        }
-        continue;
-      }
       // When parsing here, wait until you see "Room"
       // You should expect that every 10 COURSES, you will see the period number
       // which you can note
       if (i == idxRoom) {
         string course = text.substr(courseIdx, i - courseIdx);
-        if (course == "PHYSICAL EDUCAT") {
-          isGym = true;
-        }
         cout << course << "e\n";
+        currentCourse.courseName = course;
         i += 5;
         roomIdx = i;
         state = PARSER::ROOM;
@@ -404,6 +414,7 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::ROOM:
       if (text.at(i) == ' ') {
         cout << text.substr(roomIdx, i - roomIdx) << "e\n";
+        currentCourse.room = text.substr(roomIdx, i - roomIdx);
         i++;
         teacherHelper = 0;
         teacherIdx = i;
@@ -413,12 +424,10 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::TEACHER:
       // Remove whitespace, sometimes there is more or less whitespace
       if (text.at(i) == ' ') {
-        if (teacherHelper == 1) {
-          cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
-          state = PARSER::TIME;
-          timeIdx = i;
-        }
-        teacherHelper++;
+        cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
+        currentCourse.teacher = text.substr(teacherIdx, i - teacherIdx);
+        state = PARSER::TIME;
+        timeIdx = i;
       }
       break;
     case PARSER::TIME:
@@ -435,15 +444,23 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::TIME2:
       if (text.at(i) == ' ') {
         cout << text.substr(timeIdx, i - timeIdx) << "e\n";
+        currentCourse.timeSlot = text.substr(timeIdx, i - timeIdx);
         i++;
-        if (courseCount == 10) {
+        coursesRow[periodNum][courseCount] = currentCourse;
+
+        cout << courseCount << '\n';
+
+        if (courseCount == 9) {
           state = PARSER::PERIOD;
+          currentCourse = Course();
+          courseCount = -1;
+          i += sizeOfEmptyCell;
         } else if (isdigit(
                        text.at(i + 1))) { // Check for edge case when you have a
                                           // free period on the cycle day
           // That means that we already reached the period and there is empty
           // classes in that row we need to clarify this and ask the user for
-          // mroe information
+          // more information
         } else {
           state = PARSER::COURSEID;
           courseIDIdx = i;
@@ -452,8 +469,21 @@ vector<Day> parseSchedule(const string &text) {
       break;
     }
   }
+  vector<Day> cycleDays;
+  // [[Course, Course, Course],
+  // [Course, Course, Course]]
+  for (int c = 0; c < 10; c++) {
+    Day day;
+    day.dayNumber = c;
+    vector<Course> courses;
+    for (int r = 0; r < 10; r++) {
+      courses.push_back(coursesRow[r][c]);
+    }
+    day.courses = courses;
+    cycleDays.push_back(day);
+  }
   // writeToFile("test.txt", text);
-  // printSchedule(parsedSchedule);
-  return parsedSchedule;
+  printSchedule(cycleDays);
+  return cycleDays;
 }
 } // namespace PDF

@@ -100,6 +100,10 @@ string setDailyAnnoucement(const HttpRequest &req) {
   return response;
 }
 
+string parsePDF(const HttpRequest &req) {
+
+}
+
 
 int main(int argc, char **argv) {
   // Remember to check the file size because if it's too big they clearly are slowing down the server
