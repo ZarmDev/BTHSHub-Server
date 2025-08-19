@@ -9,6 +9,9 @@ string readFile(const string &path);
 void writeToFile(const string &path, const string &data);
 vector<string> split(string str,string sep);
 void printAllRedisKeys();
+string removeWhitespace(const string& str);
+string trim(const string& str);
+
 // void printSet(unordered_set<string> const &s);
 // void printMap(const unordered_map<string, string>& m);
 // All the below template/other code is generated using AI. I have no clue how this works

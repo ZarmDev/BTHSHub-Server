@@ -5,6 +5,21 @@
 #define redis Global::db
 
 using namespace std;
+/*
+{
+  "team:id:counter": "1",
+  "team:1": {
+    "name": "FRC 334",
+    "created_at": "1781281",
+  },
+  "teams:all": ("FRC 334"),
+  "teams:by_created": ("FRC 334"),
+  "team:name:FRC 334": "1",
+  "team:1:members": ("alice"),
+  "user:42:teams": ("FRC 334"),
+  "team:1:coaches": ("Ms.D", "Mr.C")
+}
+*/
 
 // HELP OF AI
 namespace TeamDB {
@@ -15,11 +30,14 @@ long long createTeam(const string &team_name) {
 
   // Step 2: Store team metadata
   string team_key = "team:" + to_string(team_id);
+  string team_pointer =  "team:name:" + team_name;
+
   /* redis.hset("user:100", "name", "Alice"); */
   /* Equivalent to: user["name"] = "Alice"; */
   unordered_map<string, string> m = {{"name", team_name},
                                      {"created_at", to_string(time(nullptr))}};
   redis.hmset("hash", m.begin(), m.end());
+  redis.set(team_pointer, to_string(team_id));
 
   // Step 3: Add to tracking set
   redis.sadd("teams:all", to_string(team_id));

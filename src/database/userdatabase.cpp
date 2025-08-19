@@ -22,13 +22,34 @@ using namespace std;
   "username:alice": "42",
   "email:alice@example.com": "42",
   "users:all": Set(["42", "43", ...]),
-  "users:by_created": SortedSet({ "42": 1723228800, ... })
+  "users:by_created": SortedSet({ "42": 1723228800, ... }),
+  "team:1:members": ("alice"),
+  "team:1:coaches": ("Ms.D", "Mr.C")
+  "user:42:teams": ("FRC 334")
 }
 NOTES:
 adminLevel - 0 means no permissions, 1 means an app moderator, 2 means all permission admin
 */
 
 namespace UserDB {
+// Add an existing user to an existing team
+void addUserToTeam(long long user_id, long long team_id) {
+  string team_members_key = "team:" + to_string(team_id) + ":members";
+  string user_teams_key = "user:" + to_string(user_id) + ":teams";
+
+  // Add user to team's member set
+  redis.sadd(team_members_key, to_string(user_id));
+
+  // Add team to user's team set
+  redis.sadd(user_teams_key, to_string(team_id));
+
+  // Optionally, track join time
+  double now = time(nullptr);
+  redis.zadd(team_members_key + ":by_joined", to_string(user_id), now);
+  redis.zadd(user_teams_key + ":by_joined", to_string(user_id), now);
+
+  cout << "Added user " << user_id << " to team " << team_id << endl;
+}
 bool createUser(const string &username, const string &password,
                 const string &email) {
   cout << password << '\n';
@@ -103,25 +124,6 @@ bool grantAdminLevel(const string& username, string level) {
   redis.hmset(userhash_key, update.begin(), update.end());
 }
 
-// Add an existing user to an existing team
-void addUserToTeam(long long user_id, long long team_id) {
-  string team_members_key = "team:" + to_string(team_id) + ":members";
-  string user_teams_key = "user:" + to_string(user_id) + ":teams";
-
-  // Add user to team's member set
-  redis.sadd(team_members_key, to_string(user_id));
-
-  // Add team to user's team set
-  redis.sadd(user_teams_key, to_string(team_id));
-
-  // Optionally, track join time
-  double now = time(nullptr);
-  redis.zadd(team_members_key + ":by_joined", to_string(user_id), now);
-  redis.zadd(user_teams_key + ":by_joined", to_string(user_id), now);
-
-  cout << "Added user " << user_id << " to team " << team_id << endl;
-}     
-
 string handleLogin(const string &username, const string &password) {
   // printContainer(users);
   // printAllRedisKeys();
@@ -150,18 +152,3 @@ string handleLogin(const string &username, const string &password) {
   return token;
 }
 } // namespace UserDB
-
-// Store in Redis (written by AI)
-void storeScheduleInRedis(const vector<Day>& schedule) {
-    nlohmann::json j = PDF::scheduleToJson(schedule);
-    string jsonString = j.dump();
-    
-    // Store the entire schedule as one key
-    redis.set("student_schedule", jsonString);
-    
-    // Or store each day separately for faster individual day access
-    for (const auto& day : schedule) {
-        nlohmann::json dayJson = PDF::scheduleToJson({day});
-        redis.set("schedule_day_" + to_string(day.dayNumber), dayJson.dump());
-    }
-}

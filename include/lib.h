@@ -33,9 +33,11 @@ public:
   void use(MiddlewareFunc func);
   void use(const std::vector<MiddlewareFunc> &funcs);
   string handleRequest(const HttpRequest &req);
+  void setMaxCharacters(int num);
 
 private:
   int server_fd;
+  int maximumCharacters = 1024;
   optional<vector<MiddlewareFunc>> currentMiddlewares;
   unordered_map<string, RequestFunc> postRoutes;
   unordered_map<string, RequestFunc> getRoutes;

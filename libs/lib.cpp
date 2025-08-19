@@ -136,7 +136,6 @@ string replace_all(string str, const string &from, const string &to) {
 // I saw an example on Codecrafters doing it this way and I have to say they did
 // a good job
 void Server::handleClient(int client_fd) {
-  constexpr int maximumCharacters = 1024;
   // Setup a buffer with any amount of characters for now...
   char buffer[maximumCharacters];
 
@@ -250,6 +249,10 @@ void Server::handleClient(int client_fd) {
   send(client_fd, response.c_str(), response.length(), 0);
 }
 
+void Server::setMaxCharacters(int num) {
+  maximumCharacters = num;
+}
+
 void Server::use(MiddlewareFunc func) {
   currentMiddlewares = std::vector<MiddlewareFunc>{func};
 }
@@ -294,6 +297,19 @@ string Server::handleRequest(const HttpRequest &req) {
   }
   return sendString("404 Not Found", "");
 }
+
+// TODO: parse multipart/form-data
+/*
+POST /upload HTTP/1.1
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryX
+
+------WebKitFormBoundaryX
+Content-Disposition: form-data; name="file"; filename="myfile.pdf"
+Content-Type: application/pdf
+
+(binary PDF data here)
+------WebKitFormBoundaryX--
+*/
 
 // Help of AI
 string Response::toString() const {

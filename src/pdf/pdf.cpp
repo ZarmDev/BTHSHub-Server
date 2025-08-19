@@ -336,7 +336,6 @@ vector<Day> parseSchedule(const string &text) {
   // this also signifies the cycle day of the week (or column)
   int courseCount = -1;
   int idxRoom;
-  int teacherHelper;
   // state based on enum
   PARSER state = PARSER::PERIOD;
   // 1 UKS21XA/71  AP COMPUTER SCI Room  3W04 SMITH  8:05- 8:46
@@ -391,7 +390,7 @@ vector<Day> parseSchedule(const string &text) {
       if (text.at(i) == ' ') {
         cout << "|Day " << courseCount + 2 << "|\n";
         cout << text.substr(courseIDIdx, i - courseIDIdx) << "e\n";
-        currentCourse.courseId = text.substr(courseIDIdx, i - courseIDIdx);
+        currentCourse.courseId = removeWhitespace(text.substr(courseIDIdx, i - courseIDIdx));
         state = PARSER::COURSE;
         idxRoom = text.find("Room", i);
         courseIdx = i;
@@ -402,7 +401,7 @@ vector<Day> parseSchedule(const string &text) {
       // You should expect that every 10 COURSES, you will see the period number
       // which you can note
       if (i == idxRoom) {
-        string course = text.substr(courseIdx, i - courseIdx);
+        string course = trim(text.substr(courseIdx, i - courseIdx));
         cout << course << "e\n";
         currentCourse.courseName = course;
         i += 5;
@@ -414,9 +413,8 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::ROOM:
       if (text.at(i) == ' ') {
         cout << text.substr(roomIdx, i - roomIdx) << "e\n";
-        currentCourse.room = text.substr(roomIdx, i - roomIdx);
+        currentCourse.room = removeWhitespace(text.substr(roomIdx, i - roomIdx));
         i++;
-        teacherHelper = 0;
         teacherIdx = i;
         state = PARSER::TEACHER;
       }
@@ -425,7 +423,7 @@ vector<Day> parseSchedule(const string &text) {
       // Remove whitespace, sometimes there is more or less whitespace
       if (isdigit(text.at(i))) {
         cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
-        currentCourse.teacher = text.substr(teacherIdx, i - teacherIdx);
+        currentCourse.teacher = trim(text.substr(teacherIdx, i - teacherIdx));
         state = PARSER::TIME;
         timeIdx = i;
       }
@@ -444,7 +442,7 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::TIME2:
       if (text.at(i) == ' ') {
         cout << text.substr(timeIdx, i - timeIdx) << "e\n";
-        currentCourse.timeSlot = text.substr(timeIdx, i - timeIdx);
+        currentCourse.timeSlot = removeWhitespace(text.substr(timeIdx, i - timeIdx));
         i++;
         coursesRow[periodNum][courseCount] = currentCourse;
 

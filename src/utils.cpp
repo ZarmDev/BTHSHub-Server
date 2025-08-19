@@ -57,6 +57,32 @@ void printAllRedisKeys() {
   }
 }
 
+string removeWhitespace(const string& str) {
+  string newStr;
+  for (int i = 0; i < str.length(); i++) {
+    if (str.at(i) != ' ') {
+      newStr += str.at(i);
+    }
+  }
+  return newStr;
+}
+
+// only for the surrounding whitespace
+string trim(const string& str) {
+  string newStr;
+  int i = 0;
+  while (str.at(i) == ' ') {
+    i++;
+  }
+  int startIdx = i;
+
+  i = str.length() - 1;
+  while(str.at(i) == ' ') {
+    i--;
+  }
+  return str.substr(startIdx, i-startIdx+1);
+}
+
 // void printSet(unordered_set<string> const &s)
 // {
 //     copy(s.begin(),

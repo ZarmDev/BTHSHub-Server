@@ -103,6 +103,8 @@ For more ideas, see ideas.md
 ❌ Implement club credit system and club directory
 ❌ Store BTHS daily announcements and send in a nice format to phones
 ❌ Add rate limiting
+❌ Add friend functionality
+❌ Storing schedules and being able to get other user's schedule (if they are friends)
 
 # Production notes
 ## Optimizations
