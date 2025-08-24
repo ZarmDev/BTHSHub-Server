@@ -16,6 +16,7 @@ namespace TeamDB {
     unordered_set<string> getAllTeams();
     unordered_map<string, string> getTeamInfo(long long team_id);
     optional<string> getTeamIdByName(const string& team_name);
+    bool teamExistsByName(const string& team_name);
     
     // Session operations (for your JWT functionality)
     void createSession(const string& token, const string& user_id, int expiry_seconds = 3600);

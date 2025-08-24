@@ -6,7 +6,6 @@ using namespace std;
 #include <functional>
 #include <unordered_map>
 #include <string>
-#include <optional>
 #include <vector>
 
 // Request struct
@@ -21,7 +20,7 @@ struct HttpRequest {
 // Response function type
 using ResponseFunc = const string (*)(const HttpRequest &req);
 using RequestFunc = function<string(const HttpRequest &req)>;
-using MiddlewareFunc = function<void(const HttpRequest &req)>;
+using MiddlewareFunc = function<bool(const HttpRequest &req)>;
 
 // Server class declaration
 class Server {
@@ -30,15 +29,18 @@ public:
   bool start();
   void get(const string &route, RequestFunc handler);
   void post(const string &route, RequestFunc handler);
-  void use(MiddlewareFunc func);
-  void use(const std::vector<MiddlewareFunc> &funcs);
+  void use(const string &url, MiddlewareFunc func);
+  void use(const string &url, const vector<MiddlewareFunc> &funcs);
   string handleRequest(const HttpRequest &req);
   void setMaxCharacters(int num);
 
 private:
   int server_fd;
   int maximumCharacters = 1024;
-  optional<vector<MiddlewareFunc>> currentMiddlewares;
+  MiddlewareFunc currentMiddlewareFunc;
+  vector<string> middlewareRoutes;
+  vector<MiddlewareFunc> middlewareFuncs;
+  unordered_map<string, MiddlewareFunc> fullMiddlewareRoutes;
   unordered_map<string, RequestFunc> postRoutes;
   unordered_map<string, RequestFunc> getRoutes;
 

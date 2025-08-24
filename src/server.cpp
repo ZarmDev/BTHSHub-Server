@@ -75,10 +75,10 @@ int main(int argc, char **argv) {
 
   server.use(protectJWT);
   // protected with JWT token
-  server.post("/createteam", createTeamRoute);
-  server.get("/getdailyannoucement", getDailyAnnoucement);
-  server.post("/setdailyannoucement", setDailyAnnoucement);
-  server.post("/uploadschedule", uploadSchedule);
+  server.post("/api/createteam", createTeamRoute);
+  server.get("/api/getdailyannoucement", getDailyAnnoucement);
+  server.post("/api/setdailyannoucement", setDailyAnnoucement);
+  server.post("/api/uploadschedule", uploadSchedule);
 
   server.start();
 

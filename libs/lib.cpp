@@ -254,11 +254,11 @@ void Server::setMaxCharacters(int num) {
 }
 
 void Server::use(MiddlewareFunc func) {
-  currentMiddlewares = std::vector<MiddlewareFunc>{func};
+  middlewareRoutes[url] = vector<MiddlewareFunc>{func};
 }
 
 void Server::use(const vector<MiddlewareFunc> &funcs) {
-  currentMiddlewares = funcs;
+  middlewareRoutes[url] = funcs;
 }
 
 void Server::get(const string &route, RequestFunc handler) {
@@ -266,14 +266,23 @@ void Server::get(const string &route, RequestFunc handler) {
 }
 
 void Server::post(const string &route, RequestFunc handler) {
+  for (int i = 0; i < middlewareRoutes.size(); i++) {
+    if (startsWith(route, middlewareRoutes[i])) {
+      fullMiddlewareRoutes[route] = currentMiddlewareFunc;
+    }
+  }
   postRoutes[route] = handler;
 }
 
 string Server::handleRequest(const HttpRequest &req) {
   // First, handle middleware
-  if (currentMiddlewares.has_value()) {
-    for (const auto &mw : currentMiddlewares.value()) {
-      mw(req); // Call the middleware function
+  auto it = middlewareRoutes.find(req.url);
+  if (it != middlewareRoutes.end()) {
+    const vector<MiddlewareFunc> mfs = it->second;
+    for (MiddlewareFunc mf : mfs) {
+      if (!mf(req)) {
+        return sendString("401 Unauthorized", "Unauthorized");
+      }
     }
   }
   if (req.method == "GET") {

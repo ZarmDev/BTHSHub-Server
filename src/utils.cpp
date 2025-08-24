@@ -83,20 +83,5 @@ string trim(const string& str) {
   return str.substr(startIdx, i-startIdx+1);
 }
 
-// void printSet(unordered_set<string> const &s)
-// {
-//     copy(s.begin(),
-//             s.end(),
-//             ostream_iterator<string>(cout, " "));
-// }
 
-// void printMap(const unordered_map<string, string>& m)
-// {
-//     for (const auto& [key, value] : m) {
-//         cout << key << ": " << value << "\n";
-//     }
-// }
 
-// void printVector(const vector<string>& v) {
-
-// }

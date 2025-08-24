@@ -1,5 +1,4 @@
 #include "global.h"
-#include "jwt.h"
 #include "lib.h"
 #include "pdf.h"
 #include "teamdatabase.h"
@@ -14,10 +13,23 @@
 using namespace std;
 
 string createTeamRoute(const HttpRequest &req) {
-  TeamDB::createTeam("test");
+  cout << "Creating team...\n";
+  // Check max team name length
+  if (req.data.length() > 50) {
+    return sendString("404 Not Found", "Team name too long!");
+  }
+  // Ensure no duplicates
+  if (!TeamDB::teamExistsByName(req.data)) {
+    return sendString("404 Not Found", "Team already exists!");
+  }
+  vector<string> parsed = split(req.data, "\n");
+  printContainer(parsed);
+
+  TeamDB::createTeam(parsed[3]);
   unordered_set<string> teams = TeamDB::getAllTeams();
   printContainer(teams);
   printContainer(TeamDB::getTeamInfo(1));
+  return sendString("200 Success", "Team " + parsed[3] + " successfully created!");
 }
 
 string createUserRoute(const HttpRequest &req) {
