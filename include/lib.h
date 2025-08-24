@@ -29,18 +29,17 @@ public:
   bool start();
   void get(const string &route, RequestFunc handler);
   void post(const string &route, RequestFunc handler);
-  void use(const string &url, MiddlewareFunc func);
-  void use(const string &url, const vector<MiddlewareFunc> &funcs);
+  void use(MiddlewareFunc func);
+  void use(const vector<MiddlewareFunc> &funcs);
   string handleRequest(const HttpRequest &req);
   void setMaxCharacters(int num);
+  void updateRouteMap(const string& route);
 
 private:
   int server_fd;
   int maximumCharacters = 1024;
-  MiddlewareFunc currentMiddlewareFunc;
-  vector<string> middlewareRoutes;
-  vector<MiddlewareFunc> middlewareFuncs;
-  unordered_map<string, MiddlewareFunc> fullMiddlewareRoutes;
+  vector<MiddlewareFunc> currentMiddlewareRoutes;
+  unordered_map<string, vector<MiddlewareFunc>> middlewareRoutesMap;
   unordered_map<string, RequestFunc> postRoutes;
   unordered_map<string, RequestFunc> getRoutes;
 

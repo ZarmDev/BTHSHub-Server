@@ -61,13 +61,19 @@ int main(int argc, char **argv) {
   // Initalize server on 4221
   server.init("4221");
 
-  // NOT FOR PRODUCTION. TODO
-  try {
-    bool createAdmin = UserDB::createUser("admin", adminPassword, "");
-  } catch (...) {
-    cerr << "Your redis DB is not online.\n Run redis-server & to start it.\n";
-    exit(1);
-  }
+  // NOT FOR PRODUCTION
+  server.post("/adminsetup", [](const HttpRequest &req) -> std::string {
+    try {
+      bool createAdmin = UserDB::createUser("admin", adminPassword, "");
+      UserDB::grantAdminLevel("admin", "2");
+    } catch (...) {
+      cerr
+          << "Your redis DB is not online.\n Run redis-server & to start it.\n";
+      exit(1);
+    }
+    return sendString("200 OK", "created admin. NOT FOR PRODUCTION");
+  });
+
   // not protected
   server.get("/", defaultRoute);
   server.post("/login", loginRoute);
@@ -75,10 +81,14 @@ int main(int argc, char **argv) {
 
   server.use(protectJWT);
   // protected with JWT token
-  server.post("/api/createteam", createTeamRoute);
-  server.get("/api/getdailyannoucement", getDailyAnnoucement);
-  server.post("/api/setdailyannoucement", setDailyAnnoucement);
-  server.post("/api/uploadschedule", uploadSchedule);
+  server.get("/getallteams", getAllTeams);
+  server.get("/getdailyannoucement", getDailyAnnoucement);
+  server.post("/setdailyannoucement", setDailyAnnoucement);
+  server.post("/uploadschedule", uploadSchedule);
+
+  server.use(protectModeratorOrAdmin);
+  // protected only for moderators (coaches, club execs) or admins
+  server.post("/createteam", createTeamRoute);
 
   server.start();
 

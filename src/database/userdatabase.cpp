@@ -54,7 +54,7 @@ bool createUser(const string &username, const string &password,
                 const string &email) {
   cout << password << '\n';
   // Used for the flat key
-  string user_key = "user:" + username;
+  string user_key = "username:" + username;
   string email_key = "email:" + email;
 
   // Check if username or email already exists
@@ -67,7 +67,7 @@ bool createUser(const string &username, const string &password,
   string user_id = to_string(redis.incr("user:id:counter"));
 
   // Used for the hash
-  string userhash_key = "userhash:" + user_id;
+  string userhash_key = "user:" + user_id;
 
   // Hash the password securely
   string password_hash = Hash::hashPassword(password);
@@ -99,6 +99,29 @@ bool createUser(const string &username, const string &password,
   return true;
 }
 
+string getUserIdByUsername(const string& username) {
+  return redis.get("username:" + username).value();
+}
+
+bool grantAdminLevel(const string& username, string level) {
+  try {
+    // Set adminLevel to 2 (admin)
+    redis.hset("user:" + UserDB::getUserIdByUsername(username), "adminLevel", level);
+  } catch (...) {
+    return false;
+  }
+  return true;
+};
+
+void printUserHash(const string& user_id) {
+    unordered_map<string, string> user_data;
+    redis.hgetall("user:" + user_id, inserter(user_data, user_data.begin()));
+    cout << "user:" << user_id << " hash fields:\n";
+    for (const auto& [key, value] : user_data) {
+        cout << key << ": " << value << '\n';
+    }
+}
+
 string getUserId(const string& user_key) {
   OptionalString user_id_opt = redis.get(user_key);
   if (!user_id_opt) {
@@ -111,31 +134,17 @@ string getUserId(const string& user_key) {
   return user_id;
 }
 
-bool grantAdminLevel(const string& username, string level) {
-  string user_key = "user:" + username;
-  string user_id = getUserId(user_key);
-
-  string userhash_key = "userhash:" + user_id;
-
-  // Will update only adminLevel
-  unordered_map<string, string> update = {
-    {"adminLevel", level}
-  };
-  redis.hmset(userhash_key, update.begin(), update.end());
-}
-
 string handleLogin(const string &username, const string &password) {
   // printContainer(users);
   // printAllRedisKeys();
   // cout << password << '\n';
 
-  string user_key = "user:" + username;
+  string user_key = "username:" + username;
 
   // Step 1: Lookup user by username
   string user_id = getUserId(user_key);
   
-  string userhash_key = "userhash:" + user_id;
-  cout << user_id << '\n';
+  string userhash_key = "user:" + user_id;
   unordered_map<string, string> user_data;
   redis.hgetall(userhash_key, inserter(user_data, user_data.begin()));
   cout << "Verifying password\n";

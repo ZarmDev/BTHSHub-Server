@@ -38,43 +38,43 @@ Annoucements
 
 // HELP OF AI
 namespace TeamDB {
-long long createTeam(const string &team_name) {
+long long createTeam(const string &teamName) {
   // Step 1: Generate a new team ID by incrementing the value at the key
   // "team:id:counter"
-  long long team_id = redis.incr("team:id:counter");
+  long long teamId = redis.incr("team:id:counter");
 
   // Step 2: Store team metadata
-  const string teamHashKey = "team:" + to_string(team_id);
-  const string teamPointerKey =  "teamname:" + team_name;
+  const string teamHashKey = "team:" + to_string(teamId);
+  const string teamPointerKey =  "teamname:" + teamName;
 
   /* redis.hset("user:100", "name", "Alice"); */
   /* Equivalent to: user["name"] = "Alice"; */
-  unordered_map<string, string> m = {{"name", team_name},
+  unordered_map<string, string> m = {{"name", teamName},
                                      {"created_at", to_string(time(nullptr))}};
   redis.hmset(teamHashKey, m.begin(), m.end());
-  redis.set(teamPointerKey, to_string(team_id));
+  redis.set(teamPointerKey, to_string(teamId));
 
   // Step 3: Add to tracking set
   // Use teams:all for unordered, fast set operations. Ex: Find team exists, getting list of all teams
-  redis.sadd("teams:all", to_string(team_id));
+  redis.sadd("teams:all", teamName);
 
   // Step 4: Add to sorted set by timestamp (less useful than above)
   // Use teams:by_created for ordered queries (by creation time). Ex: Show new teams
-  redis.zadd("teams:by_created", to_string(team_id), time(nullptr));
+  redis.zadd("teams:by_created", to_string(teamId), time(nullptr));
 
-  cout << "Created team '" << team_name << "' with ID " << team_id << endl;
+  cout << "Created team '" << teamName << "' with ID " << teamId << endl;
 
-  return team_id;
+  return teamId;
 }
 
-bool teamExists(long long team_id) {
-  string team_key = "team:" + to_string(team_id);
+bool teamExists(long long teamId) {
+  string team_key = "team:" + to_string(teamId);
   return redis.exists(team_key) == 1;
 }
 
-bool teamExistsByName(const string& team_name) {
+bool teamExistsByName(const string& teamName) {
   // redis.exists will return 1 if the key exists
-  return redis.exists("teamname:" + team_name) == 1;
+  return redis.exists("teamname:" + teamName) == 1;
 }
 
 unordered_set<string> getAllTeams() {
@@ -83,20 +83,20 @@ unordered_set<string> getAllTeams() {
   return set;
 }
 
-unordered_map<string, string> getTeamInfo(long long team_id) {
-  string team_key = "team:" + to_string(team_id);
+unordered_map<string, string> getTeamInfo(long long teamId) {
+  string team_key = "team:" + to_string(teamId);
   unordered_map<string, string> hash;
   redis.hgetall("hash", inserter(hash, hash.end()));
   return hash;
 }
 
-// void register_team_name(Redis& redis, const string& team_name, long long
-// team_id) {
-//     redis.set("team:name:" + team_name, to_string(team_id));
+// void register_teamName(Redis& redis, const string& teamName, long long
+// teamId) {
+//     redis.set("team:name:" + teamName, to_string(teamId));
 // }
 
-optional<string> getTeamIdByName(const string &team_name) {
-  auto val = redis.get("team:name:" + team_name);
+optional<string> getTeamIdByName(const string &teamName) {
+  auto val = redis.get("team:name:" + teamName);
   if (val)
     return *val;
   return nullopt;

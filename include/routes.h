@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include "global.h"
 
 using namespace std;
 
@@ -12,6 +11,6 @@ string createUserRoute(const HttpRequest &req);
 string loginRoute(const HttpRequest &req);
 string defaultRoute(const HttpRequest &req);
 string getDailyAnnoucement(const HttpRequest &req);
-bool protectJWT(const HttpRequest &req);
 string setDailyAnnoucement(const HttpRequest &req);
 string uploadSchedule(const HttpRequest &req);
+string getAllTeams(const HttpRequest &req);

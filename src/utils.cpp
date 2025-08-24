@@ -1,3 +1,4 @@
+#include "global.h"
 #include <cstring>
 #include <fstream>
 #include <ostream>
@@ -5,7 +6,6 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include "global.h"
 #define redis Global::db
 
 using namespace std;
@@ -29,15 +29,19 @@ void writeToFile(const string &path, const string &data) {
 
 // https://stackoverflow.com/questions/16286095/similar-function-to-javas-string-split-in-c
 vector<string> split(string str, string sep) {
-  char *cstr = const_cast<char *>(str.c_str());
-  char *current;
-  vector<string> arr;
-  current = strtok(cstr, sep.c_str());
-  while (current != NULL) {
-    arr.push_back(current);
-    current = strtok(NULL, sep.c_str());
+  try {
+    char *cstr = const_cast<char *>(str.c_str());
+    char *current;
+    vector<string> arr;
+    current = strtok(cstr, sep.c_str());
+    while (current != NULL) {
+      arr.push_back(current);
+      current = strtok(NULL, sep.c_str());
+    }
+    return arr;
+  } catch (...) {
+    return {str};
   }
-  return arr;
 }
 
 void printAllRedisKeys() {
@@ -57,7 +61,7 @@ void printAllRedisKeys() {
   }
 }
 
-string removeWhitespace(const string& str) {
+string removeWhitespace(const string &str) {
   string newStr;
   for (int i = 0; i < str.length(); i++) {
     if (str.at(i) != ' ') {
@@ -68,7 +72,7 @@ string removeWhitespace(const string& str) {
 }
 
 // only for the surrounding whitespace
-string trim(const string& str) {
+string trim(const string &str) {
   string newStr;
   int i = 0;
   while (str.at(i) == ' ') {
@@ -77,11 +81,8 @@ string trim(const string& str) {
   int startIdx = i;
 
   i = str.length() - 1;
-  while(str.at(i) == ' ') {
+  while (str.at(i) == ' ') {
     i--;
   }
-  return str.substr(startIdx, i-startIdx+1);
+  return str.substr(startIdx, i - startIdx + 1);
 }
-
-
-

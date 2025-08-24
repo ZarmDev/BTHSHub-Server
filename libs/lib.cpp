@@ -254,30 +254,41 @@ void Server::setMaxCharacters(int num) {
 }
 
 void Server::use(MiddlewareFunc func) {
-  middlewareRoutes[url] = vector<MiddlewareFunc>{func};
+  currentMiddlewareRoutes = vector<MiddlewareFunc>{func};
 }
 
 void Server::use(const vector<MiddlewareFunc> &funcs) {
-  middlewareRoutes[url] = funcs;
+  currentMiddlewareRoutes = funcs;
 }
 
 void Server::get(const string &route, RequestFunc handler) {
   getRoutes[route] = handler;
+  updateRouteMap(route);
 }
 
 void Server::post(const string &route, RequestFunc handler) {
-  for (int i = 0; i < middlewareRoutes.size(); i++) {
-    if (startsWith(route, middlewareRoutes[i])) {
-      fullMiddlewareRoutes[route] = currentMiddlewareFunc;
-    }
-  }
   postRoutes[route] = handler;
+  updateRouteMap(route);
+}
+
+/*
+  Given:
+  > /api/createTeam
+  > 
+
+  currentMiddlewareRoutesMap: {
+    "/api/createteam": protectJWT*,
+    "/api/postannoucement": protectJWT*
+  }
+*/
+void Server::updateRouteMap(const string& route) {
+  middlewareRoutesMap[route] = currentMiddlewareRoutes;
 }
 
 string Server::handleRequest(const HttpRequest &req) {
-  // First, handle middleware
-  auto it = middlewareRoutes.find(req.url);
-  if (it != middlewareRoutes.end()) {
+  // First, handle middleware. This should be efficient because it's just a .find() call which is usually O(1)
+  auto it = middlewareRoutesMap.find(req.url);
+  if (it != middlewareRoutesMap.end()) {
     const vector<MiddlewareFunc> mfs = it->second;
     for (MiddlewareFunc mf : mfs) {
       if (!mf(req)) {
@@ -285,6 +296,7 @@ string Server::handleRequest(const HttpRequest &req) {
       }
     }
   }
+  // Then handle each request
   if (req.method == "GET") {
     // This just finds the requested URL in the map with routes
     auto it = getRoutes.find(req.url);
@@ -292,7 +304,7 @@ string Server::handleRequest(const HttpRequest &req) {
       // Access the function using it->second and call it with the request
       return it->second(req);
     } else {
-      return sendString("404 Not Found", "");
+      return sendString("404 Not Found", "Route not found!");
     }
   } else if (req.method == "POST") {
     // This just finds the requested URL in the map with routes
@@ -301,10 +313,10 @@ string Server::handleRequest(const HttpRequest &req) {
       // Access the function using it->second and call it with the request
       return it->second(req);
     } else {
-      return sendString("404 Not Found", "");
+      return sendString("404 Not Found", "Route not found!");
     }
   }
-  return sendString("404 Not Found", "");
+  return sendString("404 Not Found", "Route not found!");
 }
 
 // TODO: parse multipart/form-data

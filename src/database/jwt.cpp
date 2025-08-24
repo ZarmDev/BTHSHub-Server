@@ -31,7 +31,7 @@ const string generateToken(const string &user_id) {
       .sign(jwt::algorithm::hs256{Global::JWT_SECRET});
 }
 
-bool verifyJWTToken(const std::string &token) {
+bool verifyJWTToken(const string &token) {
   try {
     // Parse/decode the JWT token
     auto decoded = jwt::decode<traits>(token);
@@ -49,6 +49,29 @@ bool verifyJWTToken(const std::string &token) {
   } catch (const std::exception &e) {
     std::cout << "Error: " << e.what() << std::endl;
     return false;
+  }
+}
+
+const string getUserIdFromToken(const string& token) {
+  try {
+    // Parse/decode the JWT token
+    auto decoded = jwt::decode<traits>(token);
+
+    // Create a verifier
+    auto verifier = jwt::verify<traits>().with_issuer("auth0").allow_algorithm(
+        jwt::algorithm::hs256{Global::JWT_SECRET});
+
+    // Verify the token
+    verifier.verify(decoded);
+
+    const string sub = decoded.get_subject();
+    return sub;
+  } catch (const jwt::error::token_verification_exception &e) {
+    std::cout << "Token verification failed: " << e.what() << std::endl;
+    return "";
+  } catch (const std::exception &e) {
+    std::cout << "Error: " << e.what() << std::endl;
+    return "";
   }
 }
 } // namespace JWT

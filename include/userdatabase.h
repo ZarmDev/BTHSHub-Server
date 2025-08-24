@@ -12,4 +12,5 @@ namespace UserDB {
     string handleLogin(const string &username, const string &password);
     bool grantAdminLevel(const string& username, string level);
     void storeScheduleInRedis(const vector<Day>& schedule);
+    void printUserHash(const string& user_id);
 };
