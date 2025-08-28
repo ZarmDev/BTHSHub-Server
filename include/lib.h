@@ -15,12 +15,14 @@ struct HttpRequest {
   string protocol;
   unordered_map<string, string> headers;
   string data;
+  // For adding extra data (like next() in Next.js)
+  unordered_map<string, string>& extra;
 };
 
 // Response function type
-using ResponseFunc = const string (*)(const HttpRequest &req);
-using RequestFunc = function<string(const HttpRequest &req)>;
-using MiddlewareFunc = function<bool(const HttpRequest &req)>;
+using ResponseFunc = const string (*)(HttpRequest &req);
+using RequestFunc = function<string(HttpRequest &req)>;
+using MiddlewareFunc = function<bool(HttpRequest &req)>;
 
 // Server class declaration
 class Server {
@@ -31,13 +33,13 @@ public:
   void post(const string &route, RequestFunc handler);
   void use(MiddlewareFunc func);
   void use(const vector<MiddlewareFunc> &funcs);
-  string handleRequest(const HttpRequest &req);
+  string handleRequest(HttpRequest &req);
   void setMaxCharacters(int num);
   void updateRouteMap(const string& route);
 
 private:
   int server_fd;
-  int maximumCharacters = 1024;
+  int maximumCharacters = 8192;
   vector<MiddlewareFunc> currentMiddlewareRoutes;
   unordered_map<string, vector<MiddlewareFunc>> middlewareRoutesMap;
   unordered_map<string, RequestFunc> postRoutes;

@@ -33,34 +33,20 @@ adminLevel - 0 means no permissions, 1 means an app moderator, 2 means all permi
 
 namespace UserDB {
 // Add an existing user to an existing team
-void addUserToTeam(long long user_id, long long team_id) {
-  string team_members_key = "team:" + to_string(team_id) + ":members";
-  string user_teams_key = "user:" + to_string(user_id) + ":teams";
-
-  // Add user to team's member set
-  redis.sadd(team_members_key, to_string(user_id));
-
-  // Add team to user's team set
-  redis.sadd(user_teams_key, to_string(team_id));
-
-  // Optionally, track join time
-  double now = time(nullptr);
-  redis.zadd(team_members_key + ":by_joined", to_string(user_id), now);
-  redis.zadd(user_teams_key + ":by_joined", to_string(user_id), now);
-
-  cout << "Added user " << user_id << " to team " << team_id << endl;
-}
-bool createUser(const string &username, const string &password,
+const string createUser(const string &username, const string &password,
                 const string &email) {
-  cout << password << '\n';
+  // Backslashes in team names, usernames will screw with the places where I used split to get data from req.data
+  // Could have parsed the JSON, but I prefer something easy to make and use
+  if (username.contains("\\") || password.contains("\\") || email.contains("\\")) {
+    return "Error: Any of the fields cannot contain backslashes (\\)";
+  }
   // Used for the flat key
   string user_key = "username:" + username;
   string email_key = "email:" + email;
 
   // Check if username or email already exists
   if (redis.exists(user_key) || redis.exists(email_key)) {
-    cout << "Error: Username or email already exists." << endl;
-    return false;
+    return "Error: Username or email already exists.";
   }
 
   // Generate a new user ID (you can use an atomic counter or UUID)
@@ -95,8 +81,7 @@ bool createUser(const string &username, const string &password,
   redis.sadd("users:all", user_id);
   // redis.zadd("users:by_created", user_id, time(nullptr));
 
-  cout << "Created user '" << username << "' with ID " << user_id << endl;
-  return true;
+  return "Created user '" + username + "' with ID " + user_id;
 }
 
 string getUserIdByUsername(const string& username) {
@@ -143,6 +128,7 @@ string handleLogin(const string &username, const string &password) {
 
   // Step 1: Lookup user by username
   string user_id = getUserId(user_key);
+  printUserHash(user_id);
   
   string userhash_key = "user:" + user_id;
   unordered_map<string, string> user_data;

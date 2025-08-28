@@ -20,8 +20,8 @@
 
 using namespace std;
 
-// using ResponseFunc = const string (*)(const HttpRequest &req);
-// using RequestFunc = function<void(const HttpRequest &req)>;
+// using ResponseFunc = const string (*)(HttpRequest &req);
+// using RequestFunc = function<void(HttpRequest &req)>;
 
 // Extract the path from a request (example: localhost:4221/test) -> returns
 // test
@@ -112,7 +112,7 @@ bool Server::start() {
       // Non static functions need to accept this when creating threads
       thread(&Server::handleClient, this, client_fd).detach();
     } catch (int err) {
-      cout << "An error occured during processing. Error code: " << err << "\n";
+      cout << "An error occured with handleClient. Error code: " << err << "\n";
     }
   }
   close(server_fd);
@@ -138,6 +138,9 @@ string replace_all(string str, const string &from, const string &to) {
 void Server::handleClient(int client_fd) {
   // Setup a buffer with any amount of characters for now...
   char buffer[maximumCharacters];
+  
+  // Clear buffer in case the memory given to handleClient wasn't cleared
+  memset(buffer, 0, maximumCharacters);
 
   // https://www.bogotobogo.com/cplusplus/sockets_server_client.php
   // Reads the value from the client and returns the length of the response
@@ -239,14 +242,19 @@ void Server::handleClient(int client_fd) {
     cout << "[" << pair.first << "] = [" << pair.second << "]\n";
   }
 
-  HttpRequest req = {httpMethod, url, protocol, headers, data};
-  string response = this->handleRequest(req);
-
-  // send(sockfd, buf, len, flags);
-  // buf is the response
-  // len is in bytes
-  // flags is ???
-  send(client_fd, response.c_str(), response.length(), 0);
+  unordered_map<string, string> extra;
+  HttpRequest req = {httpMethod, url, protocol, headers, data, extra};
+  try {  
+    string response = this->handleRequest(req);
+    // send(sockfd, buf, len, flags);
+    // buf is the response
+    // len is in bytes
+    // flags is ???
+    send(client_fd, response.c_str(), response.length(), 0);
+  } catch (...) {
+    cerr << "Error trying to handle request\n";
+  }
+  
 }
 
 void Server::setMaxCharacters(int num) {
@@ -285,7 +293,8 @@ void Server::updateRouteMap(const string& route) {
   middlewareRoutesMap[route] = currentMiddlewareRoutes;
 }
 
-string Server::handleRequest(const HttpRequest &req) {
+string Server::handleRequest(HttpRequest &req) {
+  const string errorMsg = req.url + " not found!";
   // First, handle middleware. This should be efficient because it's just a .find() call which is usually O(1)
   auto it = middlewareRoutesMap.find(req.url);
   if (it != middlewareRoutesMap.end()) {
@@ -304,7 +313,7 @@ string Server::handleRequest(const HttpRequest &req) {
       // Access the function using it->second and call it with the request
       return it->second(req);
     } else {
-      return sendString("404 Not Found", "Route not found!");
+      return sendString("404 Not Found", errorMsg);
     }
   } else if (req.method == "POST") {
     // This just finds the requested URL in the map with routes
@@ -313,10 +322,10 @@ string Server::handleRequest(const HttpRequest &req) {
       // Access the function using it->second and call it with the request
       return it->second(req);
     } else {
-      return sendString("404 Not Found", "Route not found!");
+      return sendString("404 Not Found", errorMsg);
     }
   }
-  return sendString("404 Not Found", "Route not found!");
+  return sendString("404 Not Found", errorMsg);
 }
 
 // TODO: parse multipart/form-data

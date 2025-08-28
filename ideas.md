@@ -13,3 +13,6 @@
 - Add discussions/guides part of the site and course discussions/FAQ. I think the best way is if we had a google classroom like UI which has different groups (not to be confused with teams) that had all the courses listed, the teachers there and FAQs about it
 - Add events
 - Add a teacher appreciation part where you can nominate teachers and they get awards
+Reminders:
+- Each month after Junior year Februrary, you will get reminders about college like the college checklist
+- Every summer, you will get a reminder about summer reading

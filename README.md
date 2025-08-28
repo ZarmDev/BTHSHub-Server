@@ -95,9 +95,13 @@ For more ideas, see ideas.md
 ## Server: (base goals)
 ✅ The website will be made in C++ to be extremely fast and reliable
 ✅ User authentication with JWT Tokens
-❌ Add team functionality
-❌ Add admins/moderators like teachers who can edit permissions for users and delete teams
-❌ Have all team creations be sent to admins
+✅ Add team creation
+❌ Add yourself or others to teams (if you own the team)
+✅ Add ability to post annoucements
+✅ Add way to get all annoucements
+❌ Add admins/moderators like teachers, club execs who can delete their own teams
+❌ Add rate limiting
+❔ Add error handling (to make sure server works if a function fails)
 
 ## Future: (AFTER APP IS MADE!)
 ❌ Implement club credit system and club directory
@@ -105,7 +109,10 @@ For more ideas, see ideas.md
 ❌ Add rate limiting
 ❌ Add friend functionality
 ❌ Storing schedules and being able to get other user's schedule (if they are friends)
+❌ Ability to delete your own account
 
+## Issues I am aware of 
+⚠️In userdatabase, teamdatabase, you can easily screw up some parts of the server by inputting backslashes. I will look into a efficient way to parse data from req.data without compromising for security
 # Production notes
 ## Optimizations
 ### Shorten routes

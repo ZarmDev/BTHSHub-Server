@@ -6,11 +6,16 @@ using namespace std;
 
 struct HttpRequest;
 
-string createTeamRoute(const HttpRequest &req);
-string createUserRoute(const HttpRequest &req);
-string loginRoute(const HttpRequest &req);
-string defaultRoute(const HttpRequest &req);
-string getDailyAnnoucement(const HttpRequest &req);
-string setDailyAnnoucement(const HttpRequest &req);
-string uploadSchedule(const HttpRequest &req);
-string getAllTeams(const HttpRequest &req);
+string createTeamRoute(HttpRequest &req);
+string createUserRoute(HttpRequest &req);
+string loginRoute(HttpRequest &req);
+string defaultRoute(HttpRequest &req);
+string getDailyAnnoucement(HttpRequest &req);
+string setDailyAnnoucement(HttpRequest &req);
+string uploadSchedule(HttpRequest &req);
+string getAllTeams(HttpRequest &req);
+string createTeamAnnoucement(HttpRequest &req);
+string getTeamAnnoucements(HttpRequest &req);
+string addUserToTeam(HttpRequest &req);
+string addOtherUserToTeam(HttpRequest &req);
+string getTeamInfo(HttpRequest &req);

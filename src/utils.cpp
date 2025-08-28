@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include <cctype>
 #define redis Global::db
 
 using namespace std;
@@ -86,3 +87,20 @@ string trim(const string &str) {
   }
   return str.substr(startIdx, i - startIdx + 1);
 }
+
+// example: 5admin8password
+// vector<string> parseLengthPrefixed(const string& data) {
+//   vector<string> result;
+//   enum STATE {
+//     LENGTH,
+//     CONTENT
+//   };
+//   STATE state = STATE::LENGTH;
+//   int length;
+//   string content;
+//   for (int i = 0; i < data.length(); i++) {
+//     if (state == STATE::LENGTH) {
+//       length = stoi(data);
+//     }
+//   }
+// }

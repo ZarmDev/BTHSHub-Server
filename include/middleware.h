@@ -6,7 +6,7 @@
 
 using namespace std;
 
-bool protectJWT(const HttpRequest &req);
-bool protectModerator(const HttpRequest &req);
-bool protectAdmin(const HttpRequest &req);
-bool protectModeratorOrAdmin(const HttpRequest &req);
+bool protectJWT(HttpRequest &req);
+bool protectModerator(HttpRequest &req);
+bool protectAdmin(HttpRequest &req);
+bool protectModeratorOrAdmin(HttpRequest &req);

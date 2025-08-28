@@ -62,9 +62,9 @@ int main(int argc, char **argv) {
   server.init("4221");
 
   // NOT FOR PRODUCTION
-  server.post("/adminsetup", [](const HttpRequest &req) -> std::string {
+  server.post("/adminsetup", [](HttpRequest &req) -> std::string {
     try {
-      bool createAdmin = UserDB::createUser("admin", adminPassword, "");
+      const string createAdmin = UserDB::createUser("admin", adminPassword, "");
       UserDB::grantAdminLevel("admin", "2");
     } catch (...) {
       cerr
@@ -81,14 +81,22 @@ int main(int argc, char **argv) {
 
   server.use(protectJWT);
   // protected with JWT token
-  server.get("/getallteams", getAllTeams);
-  server.get("/getdailyannoucement", getDailyAnnoucement);
-  server.post("/setdailyannoucement", setDailyAnnoucement);
-  server.post("/uploadschedule", uploadSchedule);
+  server.get("/api/getallteams", getAllTeams);
+  server.get("/api/getteaminfo", getTeamInfo);
+  server.get("/api/getdailyannoucement", getDailyAnnoucement);
+  server.post("/api/uploadschedule", uploadSchedule);
+  server.post("/api/createannoucement", createTeamAnnoucement);
+  server.get("/api/getannoucements", getTeamAnnoucements);
+  server.post("/api/addusertoteam", addUserToTeam);
 
   server.use(protectModeratorOrAdmin);
   // protected only for moderators (coaches, club execs) or admins
-  server.post("/createteam", createTeamRoute);
+  server.post("/mod/createteam", createTeamRoute);
+  server.post("/mod/addotherusertoteam", addOtherUserToTeam);
+
+  server.use(protectAdmin);
+  // protected only for admins
+  server.post("/admin/setdailyannoucement", setDailyAnnoucement);
 
   server.start();
 

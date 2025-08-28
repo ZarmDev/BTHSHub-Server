@@ -1,5 +1,6 @@
 import requests
 import subprocess
+import json
 from dotenv import load_dotenv
 import os
 
@@ -28,20 +29,53 @@ response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/login"
-data = f"admin\n{os.getenv("ADMINPASS")}"
+data = "admin\n" + os.getenv("ADMINPASS")
+print(os.getenv("ADMINPASS"))
 
 response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
 print(response.text)
 token = (response.text)
 
-url = "http://localhost:4221/createteam"
-data = "FRC 334"
+url = "http://localhost:4221/mod/createteam"
+data = "FRC 334\n0"
 
 response = requests.post(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
 print(response.text)
 
-url = "http://localhost:4221/getallteams"
+# url = "http://localhost:4221/api/addusertoteam"
+# data = "FRC 334\n0"
+
+# response = requests.post(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+# print(response.text)
+
+url = "http://localhost:4221/api/getteaminfo"
+data = "FRC 334"
+
+response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+print(response.text)
+
+url = "http://localhost:4221/api/getallteams"
 data = ""
+
+response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+print(response.text)
+
+url = "http://localhost:4221/api/createannoucement"
+for i in range(20):
+  data = {
+    "teamName": "FRC 334",
+    "content": str(i),
+    "mentions": ["programmers", "test"]
+  }
+
+  obj = json.dumps(data)
+
+  response = requests.post(url, data=obj, headers={"Authorization": token, "Content-Type": "text/plain"})
+
+print(response.text)
+
+url = "http://localhost:4221/api/getannoucements"
+data = "FRC 334"
 
 response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
 print(response.text)
@@ -55,17 +89,3 @@ print(response.text)
 #   response = requests.post(url, files=files)
     
 # print(response.text)
-
-print("-----------------------ERROR TESTING-----------------------")
-exit()
-
-url = "http://localhost:4221/login"
-data = "u\n123"
-
-response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
-
-url = "http://localhost:4221/createteam"
-data = "FRC 334"
-
-response = requests.post(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
-print(response.text)

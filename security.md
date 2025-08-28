@@ -28,7 +28,7 @@
 
 1. **Add Expiration Checking** in your `JWTTokenMiddleware` function:
    ```cpp
-   bool JWTTokenMiddleware(const HttpRequest &req) {
+   bool JWTTokenMiddleware(HttpRequest &req) {
        // Extract token from Authorization header
        auto it = req.headers.find("Authorization");
        if (it == req.headers.end()) return false;
@@ -91,7 +91,7 @@
 
 3. **Input Validation** for all client data:
    ```cpp
-   string createUserRoute(const HttpRequest &req) {
+   string createUserRoute(HttpRequest &req) {
        // Validate email format
        if (!isValidEmail(parsed[2])) {
            return sendString("400 Bad Request", "Invalid email format");

@@ -1,7 +1,11 @@
 #include "teamdatabase.h"
 #include "global.h"
+#include "utils.h"
 #include <ctime>
 #include <iostream>
+#include <nlohmann/json.hpp>
+#include <string>
+
 #define redis Global::db
 
 using namespace std;
@@ -12,14 +16,17 @@ Basics
   "team:1": {
     "name": "FRC 334",
     "created_at": "1781281",
+    "private": "false"
   },
   "teamname:FRC 334": "1",
   "team:1:annoucements": ("1", "2", "3")
   "teams:all": ("FRC 334"),
   "teams:by_created": ("FRC 334"),
   "team:1:members": ("alice"),
+  "team:1:members:by_joined": ("alice"),
   "team:1:coaches": ("Ms.D", "Mr.C"),
   "user:42:teams": ("FRC 334"),
+  "user:42:teams:by_joined": ("FRC 334")
 }
 Annoucements
 {
@@ -36,9 +43,53 @@ Annoucements
 }
 */
 
+bool addUserToTeamHelper(const string& user_id, const string& team_id) {
+  string team_members_key = "team:" + team_id + ":members";
+  string user_teams_key = "user:" + user_id + ":teams";
+
+  // Add user to team's member set
+  redis.sadd(team_members_key, user_id);
+
+  // Add team to user's team set
+  redis.sadd(user_teams_key, team_id);
+
+  // Optionally, track join time
+  double now = time(nullptr);
+  redis.zadd(team_members_key + ":by_joined", user_id, now);
+  redis.zadd(user_teams_key + ":by_joined", user_id, now);
+
+  cout << "Added user " << user_id << " to team " << team_id << endl;
+  return true;
+}
+
 // HELP OF AI
 namespace TeamDB {
-long long createTeam(const string &teamName) {
+bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPrivate) {
+  string team_key = "team:" + team_id;
+  // First, check the level of permission the user has. A user can only add themselves to private teams if they are an admin
+  string adminLevel = *redis.hget("user:" + user_id, "adminLevel");
+
+  if (adminLevel != "2") {
+    return false;
+  }
+  // Second, make sure that the team is public, if not you must be invited
+  string isPrivate = *redis.hget(team_key, "private");
+  if (isPrivate == "true" && !bypassPrivate) {
+    return false;
+  }
+
+  addUserToTeamHelper(user_id, team_id);
+  return true;
+}
+
+
+bool addOtherUserToTeam(const string& user_id, const string& team_id) {
+}
+
+long long createTeam(const string &teamName, const string& isPrivate, const string& userID) {
+  if (teamName.contains("\\")) {
+    return -1;
+  }
   // Step 1: Generate a new team ID by incrementing the value at the key
   // "team:id:counter"
   long long teamId = redis.incr("team:id:counter");
@@ -50,7 +101,8 @@ long long createTeam(const string &teamName) {
   /* redis.hset("user:100", "name", "Alice"); */
   /* Equivalent to: user["name"] = "Alice"; */
   unordered_map<string, string> m = {{"name", teamName},
-                                     {"created_at", to_string(time(nullptr))}};
+                                     {"created_at", to_string(time(nullptr))},
+                                     {"private", isPrivate}};
   redis.hmset(teamHashKey, m.begin(), m.end());
   redis.set(teamPointerKey, to_string(teamId));
 
@@ -63,6 +115,12 @@ long long createTeam(const string &teamName) {
   redis.zadd("teams:by_created", to_string(teamId), time(nullptr));
 
   cout << "Created team '" << teamName << "' with ID " << teamId << endl;
+
+  // Step 5: Add user to the created team and bypass the private check
+  TeamDB::addUserToTeam(userID, to_string(teamId), true);
+
+  auto t = getTeamInfo(teamId);
+  printContainer(t);
 
   return teamId;
 }
@@ -86,7 +144,7 @@ unordered_set<string> getAllTeams() {
 unordered_map<string, string> getTeamInfo(long long teamId) {
   string team_key = "team:" + to_string(teamId);
   unordered_map<string, string> hash;
-  redis.hgetall("hash", inserter(hash, hash.end()));
+  redis.hgetall(team_key, inserter(hash, hash.end()));
   return hash;
 }
 
@@ -113,18 +171,39 @@ void postAnnoucement(const string& teamName, const string& content, const string
   unordered_map<string, string> m = {{"content", content},
                                           {"owner", userIDOwner},
                                      {"created_at", to_string(time(nullptr))}};
-  redis.hmset("hash", m.begin(), m.end());
+  redis.hmset(teamKey + ":" + to_string(annoucement_id), m.begin(), m.end());
   redis.sadd(teamKey + ":mentions", mentions.begin(), mentions.end());
 }
-} // namespace TeamDB
 
-void getAnnoucementLength() {
-
+int getNumOfAnnoucements(string& teamName) {
+  Optional counter = redis.get(teamName+":annoucement:id:counter");
+  if (!counter) {
+    return 0;
+  }
+  return stoi(*counter);
 }
 
 /*
 start: put the first annoucement you want to get
 */
-void getRangeOfAnnoucements(int start, int end) {
-
+nlohmann::json getRangeOfAnnoucements(const string& teamName, int start, int end) {
+  nlohmann::json arr = nlohmann::json::array();
+  cout << teamName << " " << start << " " << end << '\n';
+  for (int i = end; i >= start; i--) {
+    string annoucementKey = teamName + ":annoucement:" + to_string(i);
+    unordered_map<string, string> obj;
+    redis.hgetall(annoucementKey, inserter(obj, obj.begin()));
+    if (!obj.empty()) {
+      // Convert to JSON object
+      nlohmann::json j = obj;
+      // Add to array
+      arr.push_back(j);
+    }
+  }
+  return arr;
 }
+
+const string getTeamIDFromName(const string& teamName) {
+  return redis.get("teamname:" + teamName).value();
+}
+} // namespace TeamDB

@@ -5,20 +5,22 @@
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
+#include <nlohmann/json.hpp>
 
 using namespace std;
 using namespace sw::redis;
 
 namespace TeamDB {
-    // Team operations
-    long long createTeam(const string& team_name);
+    long long createTeam(const string &teamName, const string& isPrivate, const string& userID);
     bool teamExists(long long team_id);
     unordered_set<string> getAllTeams();
     unordered_map<string, string> getTeamInfo(long long team_id);
     optional<string> getTeamIdByName(const string& team_name);
     bool teamExistsByName(const string& team_name);
-    
-    // Session operations (for your JWT functionality)
-    void createSession(const string& token, const string& user_id, int expiry_seconds = 3600);
-    optional<string> getSession(const string& token);
+    int getNumOfAnnoucements(string& teamName);
+    nlohmann::json getRangeOfAnnoucements(const string& teamName, int start, int end);
+    void postAnnoucement(const string& teamName, const string& content, const string& userIDOwner, vector<string> mentions);
+    const string getTeamIDFromName(const string& teamName);
+    bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPrivate);
+    bool addOtherUserToTeam(const string& user_id, const string& team_id);
 };
