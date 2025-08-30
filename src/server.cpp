@@ -61,7 +61,9 @@ int main(int argc, char **argv) {
   }
   // Initalize server on 4221
   server.init("4221");
-  Global::serverOrigin = "http://wsl.localhost:4221";
+  // NOT FOR PRODUCTION
+  Global::serverOrigin = "*";
+
 
   // NOT FOR PRODUCTION
   server.post("/adminsetup", [](HttpRequest &req) -> std::string {

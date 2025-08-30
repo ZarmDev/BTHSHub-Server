@@ -238,7 +238,7 @@ void Server::handleClient(int client_fd) {
   writeToFile("output.txt", bufferStr);
 
   cout << "INFO: Request to " << url << '\n';
-  cout << httpMethod << "\n" << protocol << '\n';
+  cout << httpMethod << " " << protocol << '\n';
   for (const auto &pair : headers) {
     cout << "[" << pair.first << "] = [" << pair.second << "]\n";
   }
@@ -308,6 +308,7 @@ string Server::handleRequest(HttpRequest &req) {
       }
     }
   }
+  cout << req.method << '\n';
   // Then handle each request
   if (req.method == "GET") {
     // This just finds the requested URL in the map with routes
@@ -327,6 +328,9 @@ string Server::handleRequest(HttpRequest &req) {
     } else {
       return sendString("404 Not Found", errorMsg);
     }
+  } else if (req.method == "OPTIONS") {
+    cout << "FOUND OPTIONS\n";
+    return sendString("200 OK", ""); 
   }
   return sendString("404 Not Found", errorMsg);
 }
@@ -359,14 +363,14 @@ string sendString(const string &status, const string &body) {
   response.append("Content-Type: text/plain\r\n");
 
   if (Global::serverOrigin != "") {
-    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin);
-    response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-    response.append("Access-Control-Allow-Headers: Content-Type, Authorization");
+    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
+    response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+    response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
   }
 
   response.append("Content-Length: " + to_string(body.length()) + "\r\n" +
                   "\r\n");
-  response.append(body + "\r\n");
+  response.append(body);
   
   return response;
 }

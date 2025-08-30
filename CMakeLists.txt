@@ -9,7 +9,6 @@ file(GLOB_RECURSE SOURCE_FILES
   "src/*.cpp"
   "libs/*.cpp"
 )
-message(STATUS "Source files found: ${SOURCE_FILES}")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -20,14 +19,12 @@ set(CMAKE_CXX_STANDARD 23)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # Thread preferences
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 # Allow files to include the include directory
 include_directories(include)
-message(STATUS "Include directories: ${CMAKE_INCLUDE_PATH}")
 
 # Find required packages from vcpkg
 find_package(Threads REQUIRED)
@@ -45,7 +42,6 @@ pkg_check_modules(LIBSODIUM libsodium)
 add_library(project_options INTERFACE)
 
 find_path(JWT_CPP_INCLUDE_DIRS "jwt-cpp/base.h")
-message(STATUS "JWT_CPP_INCLUDE_DIRS: ${JWT_CPP_INCLUDE_DIRS}")
 
 target_precompile_headers(project_options INTERFACE
   <vector>

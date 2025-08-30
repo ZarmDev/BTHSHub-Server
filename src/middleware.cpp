@@ -8,74 +8,68 @@
 
 using namespace std;
 
-bool protectJWT(HttpRequest &req) {
-  cout << "protectJWT\n";
+enum class AccessLevel {
+  ANY_USER,      // Any authenticated user
+  MODERATOR,     // Moderator only
+  ADMIN,         // Admin only
+  MOD_OR_ADMIN   // Either moderator or admin
+};
+
+bool protectRoute(HttpRequest &req, AccessLevel level) {
+  // Always allow OPTIONS for CORS preflight
+  if (req.method == "OPTIONS") {
+    return true;
+  }
+  
+  // Check for Authorization header
   auto it = req.headers.find("Authorization");
   if (it == req.headers.end()) {
-    // Header not found
-    return false;
+    return false; // Header not found
   }
+  
   const string& authHeader = it->second;
-  string userID = JWT::verifyJWTToken(authHeader);
-  if (userID == "") {
-    return false;
+  string userID;
+  
+  // For ANY_USER level, verify token
+  if (level == AccessLevel::ANY_USER) {
+    userID = JWT::verifyJWTToken(authHeader);
+    if (userID.empty()) return false;
+    req.extra["userID"] = userID;
+    return true;
   }
-  // Pass userID to next routes
+  
+  // For other levels, get admin level
+  userID = JWT::getUserIdFromToken(authHeader);
+  if (userID.empty()) return false;
+  
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   req.extra["userID"] = userID;
-  return true;
+  
+  // Check permissions based on level
+  switch (level) {
+    case AccessLevel::MODERATOR:
+      return adminLevel == "1";
+    case AccessLevel::ADMIN:
+      return adminLevel == "2";
+    case AccessLevel::MOD_OR_ADMIN:
+      return adminLevel == "1" || adminLevel == "2";
+    default:
+      return false;
+  }
+}
+
+bool protectJWT(HttpRequest &req) {
+  return protectRoute(req, AccessLevel::ANY_USER);
 }
 
 bool protectModerator(HttpRequest &req) {
-  auto it = req.headers.find("Authorization");
-  if (it == req.headers.end()) {
-    // Header not found
-    return false;
-  }
-  const string& authHeader = it->second;
-  const string userID = JWT::getUserIdFromToken(authHeader);
-  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
-  // Pass userID to next routes
-  req.extra["userID"] = userID;
-  if (adminLevel == "1") {
-    return true;
-  }
-  return false;
+  return protectRoute(req, AccessLevel::MODERATOR);
 }
 
 bool protectAdmin(HttpRequest &req) {
-  auto it = req.headers.find("Authorization");
-  if (it == req.headers.end()) {
-    // Header not found
-    return false;
-  }
-  const string& authHeader = it->second;
-  const string userID = JWT::getUserIdFromToken(authHeader);
-  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
-  // Pass userID to next routes
-  req.extra["userID"] = userID;
-  if (adminLevel == "2") {
-    return true;
-  }
-  return false;
+  return protectRoute(req, AccessLevel::ADMIN);
 }
 
 bool protectModeratorOrAdmin(HttpRequest &req) {
-  auto it = req.headers.find("Authorization");
-  if (it == req.headers.end()) {
-    // Header not found
-    return false;
-  }
-  const string& authHeader = it->second;
-  const string userID = JWT::getUserIdFromToken(authHeader);
-  cout << userID << '\n';
-  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
-  // Pass userID to next routes
-  req.extra["userID"] = userID;
-  cout << "adminLevel: " << adminLevel << '\n';
-  UserDB::printUserHash(userID);
-  if (adminLevel == "2" || adminLevel == "1") {
-    return true;
-  }
-  return false;
+  return protectRoute(req, AccessLevel::MOD_OR_ADMIN);
 }
-
