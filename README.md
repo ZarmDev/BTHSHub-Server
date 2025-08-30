@@ -1,6 +1,8 @@
 # BTHSHub
 A server for Brooklyn Tech's app hub!
 
+Copyright (c) 2025 ZarmDev. All rights reserved.
+
 # Why make this?
 - Lack of information on PSAL tryouts and a central place to find clubs, interests and sports for Freshmen
 
@@ -10,9 +12,10 @@ https://www.reddit.com/r/BTHS/comments/1m6w5f9/kids_on_the_math_team_do_you_wann
 
 https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_btech/
 
-- Lack of guides about what is and how to join the Math Team class, science olympiad, FRC 334
+- Lack of guides about what is and how to join teams or classes like the Math Team class, Weston Scholars, science olympiad, FRC 334
 - Confusing usage of Microsoft Teams (which is a really bad app) for robotics but SportsYou for PSAL teams (which both have problems in themselves)
-- I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code... (which apparently is given by the coach?)
+- I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code and recently I went to a track tryout and there wasn't a single freshmen for a school of 6000 kids
+- Lack of club credit system
 
 # Installation
 ## Linux
@@ -96,7 +99,7 @@ For more ideas, see ideas.md
 ✅ The website will be made in C++ to be extremely fast and reliable
 ✅ User authentication with JWT Tokens
 ✅ Add team creation
-❌ Add yourself or others to teams (if you own the team)
+✅ Add yourself or others to teams (if you own the team or are admin)
 ✅ Add ability to post annoucements
 ✅ Add way to get all annoucements
 ❌ Add admins/moderators like teachers, club execs who can delete their own teams
@@ -110,6 +113,21 @@ For more ideas, see ideas.md
 ❌ Add friend functionality
 ❌ Storing schedules and being able to get other user's schedule (if they are friends)
 ❌ Ability to delete your own account
+❌ Delete and edit annoucements
+
+## Common errors
+### Illegal instruction        (core dumped)
+Likely means you forgot to return a string in your route
+
+Example:
+```
+string updateOtherUserAdminLevel(HttpRequest &req) {
+    grantAdminLevel(parsed[0], parsed[1]);
+    // Should have returned sendString or something like:
+    // return sendString("200 OK", "Changed permission successfully!");
+}
+server.post("/api/test", updateOtherUserAdminLevel);
+```
 
 ## Issues I am aware of 
 ⚠️In userdatabase, teamdatabase, you can easily screw up some parts of the server by inputting backslashes. I will look into a efficient way to parse data from req.data without compromising for security
@@ -118,5 +136,6 @@ For more ideas, see ideas.md
 ### Shorten routes
 For security and performance, you can write a script that replaces all the routes in server.cpp to be replaced with one letter.
 ## Security
+Make sure to log everything! Remove the system("clear") line
 ### Rotation
 Try to rotate JWT_SECRET every x days using a cronjob.

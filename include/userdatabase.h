@@ -14,4 +14,6 @@ namespace UserDB {
     void storeScheduleInRedis(const vector<Day>& schedule);
     void printUserHash(const string& user_id);
     string getUserIdByUsername(const string& username);
+    string getUsernameFromUserId(const string& userID);
+    bool isUserAdmin(const string& userID);
 };

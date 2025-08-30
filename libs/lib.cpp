@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include "global.h"
 
 using namespace std;
 
@@ -250,11 +251,13 @@ void Server::handleClient(int client_fd) {
     // buf is the response
     // len is in bytes
     // flags is ???
+    // see the notes.md file
     send(client_fd, response.c_str(), response.length(), 0);
   } catch (...) {
     cerr << "Error trying to handle request\n";
+    string response = sendString("404 Not Found", "An error occured while handling the request");
+    send(client_fd, response.c_str(), response.length(), 0);
   }
-  
 }
 
 void Server::setMaxCharacters(int num) {
@@ -354,8 +357,16 @@ string Response::toString() const {
 string sendString(const string &status, const string &body) {
   string response = "HTTP/1.1 " + status + "\r\n";
   response.append("Content-Type: text/plain\r\n");
+
+  if (Global::serverOrigin != "") {
+    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin);
+    response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+    response.append("Access-Control-Allow-Headers: Content-Type, Authorization");
+  }
+
   response.append("Content-Length: " + to_string(body.length()) + "\r\n" +
                   "\r\n");
   response.append(body + "\r\n");
+  
   return response;
 }

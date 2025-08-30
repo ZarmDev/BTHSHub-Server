@@ -16,3 +16,4 @@
 Reminders:
 - Each month after Junior year Februrary, you will get reminders about college like the college checklist
 - Every summer, you will get a reminder about summer reading
+- Add a custom data logger for track athletes that times it and automatically logs it in a nice format

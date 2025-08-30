@@ -4,6 +4,10 @@ import json
 from dotenv import load_dotenv
 import os
 
+def pf(text):
+  print(f"\033[93m{text}\033[0m")
+
+
 os.system("clear")
 
 load_dotenv()  # Loads variables from .env into environment
@@ -30,34 +34,55 @@ print(response.text)
 
 url = "http://localhost:4221/login"
 data = "admin\n" + os.getenv("ADMINPASS")
-print(os.getenv("ADMINPASS"))
 
 response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
 print(response.text)
-token = (response.text)
+adminToken = response.text
+
+url = "http://localhost:4221/login"
+data = "username\n" + "password"
+
+response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
+print(response.text)
+
+# Make username (the user) a moderator
+pf("mmaking username a moderator")
+url = "http://localhost:4221/admin/updateotheruseradminlevel"
+data = "username\n" + "1"
+
+response = requests.post(url, data=data, headers={"Authorization": adminToken,"Content-Type": "text/plain"})
+print(response.text)
+
+# Relogin with username and password and check if token works later on as a moderator
+url = "http://localhost:4221/login"
+data = "username\n" + "password"
+
+response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
+print(response.text)
+moderatorToken = response.text
 
 url = "http://localhost:4221/mod/createteam"
 data = "FRC 334\n0"
 
-response = requests.post(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+response = requests.post(url, data=data, headers={"Authorization": moderatorToken, "Content-Type": "text/plain"})
 print(response.text)
 
 # url = "http://localhost:4221/api/addusertoteam"
 # data = "FRC 334\n0"
 
-# response = requests.post(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+# response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 # print(response.text)
 
 url = "http://localhost:4221/api/getteaminfo"
 data = "FRC 334"
 
-response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/api/getallteams"
 data = ""
 
-response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/api/createannoucement"
@@ -70,14 +95,20 @@ for i in range(20):
 
   obj = json.dumps(data)
 
-  response = requests.post(url, data=obj, headers={"Authorization": token, "Content-Type": "text/plain"})
+  response = requests.post(url, data=obj, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 
 print(response.text)
 
 url = "http://localhost:4221/api/getannoucements"
 data = "FRC 334"
 
-response = requests.get(url, data=data, headers={"Authorization": token, "Content-Type": "text/plain"})
+response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+print(response.text)
+
+url = "http://localhost:4221/mod/addotherusertoteam"
+data = "FRC 334\nusername"
+
+response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 # url = "http://localhost:4221/uploadschedule"

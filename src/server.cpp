@@ -10,6 +10,7 @@
 #include <sodium.h>
 #include <string>
 #include <sw/redis++/errors.h>
+#include <cstdlib>
 
 #define redis Global::db
 
@@ -60,6 +61,7 @@ int main(int argc, char **argv) {
   }
   // Initalize server on 4221
   server.init("4221");
+  Global::serverOrigin = "http://wsl.localhost:4221";
 
   // NOT FOR PRODUCTION
   server.post("/adminsetup", [](HttpRequest &req) -> std::string {
@@ -74,13 +76,13 @@ int main(int argc, char **argv) {
     return sendString("200 OK", "created admin. NOT FOR PRODUCTION");
   });
 
-  // not protected
+  // not protected. DOES NOT send userID since it doesn't exist here
   server.get("/", defaultRoute);
   server.post("/login", loginRoute);
   server.post("/createuser", createUserRoute);
 
   server.use(protectJWT);
-  // protected with JWT token
+  // protected for regular users. sends userID in req.extra
   server.get("/api/getallteams", getAllTeams);
   server.get("/api/getteaminfo", getTeamInfo);
   server.get("/api/getdailyannoucement", getDailyAnnoucement);
@@ -90,13 +92,14 @@ int main(int argc, char **argv) {
   server.post("/api/addusertoteam", addUserToTeam);
 
   server.use(protectModeratorOrAdmin);
-  // protected only for moderators (coaches, club execs) or admins
+  // protected only for moderators (coaches, club execs) or admins. sends userID in req.extra
   server.post("/mod/createteam", createTeamRoute);
   server.post("/mod/addotherusertoteam", addOtherUserToTeam);
 
   server.use(protectAdmin);
-  // protected only for admins
+  // protected only for admins. sends userID in req.extra
   server.post("/admin/setdailyannoucement", setDailyAnnoucement);
+  server.post("/admin/updateotheruseradminlevel", updateOtherUserAdminLevel);
 
   server.start();
 

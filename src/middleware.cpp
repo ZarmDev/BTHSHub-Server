@@ -33,7 +33,7 @@ bool protectModerator(HttpRequest &req) {
   }
   const string& authHeader = it->second;
   const string userID = JWT::getUserIdFromToken(authHeader);
-  string adminLevel = *redis.hget("user:" + userID, "adminLevel");
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   // Pass userID to next routes
   req.extra["userID"] = userID;
   if (adminLevel == "1") {
@@ -50,7 +50,7 @@ bool protectAdmin(HttpRequest &req) {
   }
   const string& authHeader = it->second;
   const string userID = JWT::getUserIdFromToken(authHeader);
-  string adminLevel = *redis.hget("user:" + userID, "adminLevel");
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   // Pass userID to next routes
   req.extra["userID"] = userID;
   if (adminLevel == "2") {
@@ -68,7 +68,7 @@ bool protectModeratorOrAdmin(HttpRequest &req) {
   const string& authHeader = it->second;
   const string userID = JWT::getUserIdFromToken(authHeader);
   cout << userID << '\n';
-  string adminLevel = *redis.hget("user:" + userID, "adminLevel");
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   // Pass userID to next routes
   req.extra["userID"] = userID;
   cout << "adminLevel: " << adminLevel << '\n';

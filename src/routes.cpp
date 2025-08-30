@@ -29,9 +29,9 @@ iftheteamisprivate (0 for false, 1 for true)
 */
 string createTeamRoute(HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
-  const string teamName = parsed[0];
+  const string teamName = parsed.at(0);
   cout << "Creating " << teamName << "...\n";
-  const string isPrivate = parsed[1];
+  const string isPrivate = parsed.at(1);
   // Ensure there is no backslashes (will mess up the split)
   if (req.data.contains("\\")) {
     return sendString("404 Not Found", "Backslashes cannot be used in the team name!");
@@ -52,7 +52,7 @@ string createTeamRoute(HttpRequest &req) {
   unordered_set<string> teams = TeamDB::getAllTeams();
   printContainer(teams);
   printContainer(TeamDB::getTeamInfo(1));
-  return sendString("200 OK", "Team " + parsed[0] + " successfully created!");
+  return sendString("200 OK", "Team " + parsed.at(0) + " successfully created!");
 }
 
 // Using JSON here because it's much more convenient/readable in this case
@@ -106,13 +106,15 @@ usertoadd
 string addOtherUserToTeam(HttpRequest &req) {
   const string verifiedUserID = getUserIdFromJWT(req);
   vector<string> parsed = split(req.data, "\n");
-  const string teamID = TeamDB::getTeamIDFromName(parsed[0]);
-  const string userID = getUserIdFromJWT(req);
-  bool addToTeam = TeamDB::addOtherUserToTeam(userID, teamID);
+  const string teamName = parsed.at(0);
+  const string teamID = TeamDB::getTeamIDFromName(teamName);
+  const string userInviting = getUserIdFromJWT(req);
+  const string userBeingInvited = parsed.at(1);
+  bool addToTeam = TeamDB::addOtherUserToTeam(userInviting, userBeingInvited, teamID);
   if (addToTeam) {
-    return sendString("200 OK", "Added user to " + req.data);
+    return sendString("200 OK", "Added user to " + teamName);
   } else {
-    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+    return sendString("404 Not Found", "There was an issue adding the user to " + teamName);
   }
 }
 
@@ -121,7 +123,7 @@ string createUserRoute(HttpRequest &req) {
     vector<string> parsed = split(req.data, "\n");
     printContainer(parsed);
     const string createUserAttempt =
-        UserDB::createUser(parsed[0], parsed[1], parsed[2]);
+        UserDB::createUser(parsed.at(0), parsed.at(1), parsed.at(2));
     return sendString("200 OK", createUserAttempt);
   } catch (const runtime_error &e) {
     cerr << "Redis error: " << e.what() << endl;
@@ -131,7 +133,7 @@ string createUserRoute(HttpRequest &req) {
 
 string loginRoute(HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
-  const string token = UserDB::handleLogin(parsed[0], parsed[1]);
+  const string token = UserDB::handleLogin(parsed.at(0), parsed.at(1));
   if (token == "") {
     return sendString("404 Not Found", "Invalid password or username");
   } else {
@@ -183,7 +185,40 @@ Expect req.data to be:
 teamname
 */
 string getTeamInfo(HttpRequest &req) {
+  const string userID = getUserIdFromJWT(req);
+  const string username = UserDB::getUsernameFromUserId(userID);
+  cout << userID << " " << username << '\n';
+  // Only give the team information if you are on the team
+  if (!TeamDB::userIsOnTeam(req.data, username)) {
+    // However, if you are an admin we can allow you through
+    if (!UserDB::isUserAdmin(userID)) {
+      return sendString("404 Not Found", "Team does not exist or you are not on the team!");
+    }
+  }
   const string teamID = TeamDB::getTeamIDFromName(req.data);
-   nlohmann::json j = TeamDB::getTeamInfo(stoll(teamID));
+  nlohmann::json j = TeamDB::getTeamInfo(stoll(teamID));
   return sendString("200 OK", j.dump());
+}
+
+constexpr bool isValidAdminLevel(const string& level) {
+    constexpr char validLevels[] = {'0', '1', '2'};
+    return level.size() == 1 && 
+           find(begin(validLevels), end(validLevels), level[0]) != end(validLevels);
+}
+
+// Since this is protected with the admin middleware, we can assume we have all permissions to do anything
+/*
+Expect req.data to be:
+targetusername\n
+adminlevel
+*/
+string updateOtherUserAdminLevel(HttpRequest &req) {
+  vector<string> parsed = split(req.data, "\n");
+  const string adminLevel = parsed.at(1);
+  
+  // Just in case there something other than admin level is put (since we are allowing the user to submit anything)
+  if (isValidAdminLevel(adminLevel)) {
+    UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
+  }
+  return sendString("200 OK", "Changed permission successfully!");
 }

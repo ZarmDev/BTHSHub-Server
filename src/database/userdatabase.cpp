@@ -85,7 +85,23 @@ const string createUser(const string &username, const string &password,
 }
 
 string getUserIdByUsername(const string& username) {
-  return redis.get("username:" + username).value();
+  OptionalString user_id_opt = redis.get("username:" + username);
+  if (!user_id_opt) {
+    cout << "Username " << username << " not found" << endl;
+    return "";
+  }
+  return *user_id_opt;
+}
+
+string getUsernameFromUserId(const string& userID) {
+  OptionalString user_id_opt = redis.hget("user:" + userID, "username");
+  if (!user_id_opt) {
+    cout << userID << " not found\n";
+    return "";
+  }
+
+  string user_id = *user_id_opt;
+  return user_id;
 }
 
 bool grantAdminLevel(const string& username, string level) {
@@ -107,30 +123,17 @@ void printUserHash(const string& user_id) {
     }
 }
 
-string getUserId(const string& user_key) {
-  OptionalString user_id_opt = redis.get(user_key);
-  if (!user_id_opt) {
-    // empty string means invalid username or password
-    cout << user_key << " not found\n";
-    return "";
-  }
-
-  string user_id = *user_id_opt;
-  return user_id;
-}
-
 string handleLogin(const string &username, const string &password) {
   // printContainer(users);
   // printAllRedisKeys();
   // cout << password << '\n';
 
-  string user_key = "username:" + username;
+  const string user_key = "username:" + username;
 
   // Step 1: Lookup user by username
-  string user_id = getUserId(user_key);
-  printUserHash(user_id);
+  const string user_id = getUserIdByUsername(username);
   
-  string userhash_key = "user:" + user_id;
+  const string userhash_key = "user:" + user_id;
   unordered_map<string, string> user_data;
   redis.hgetall(userhash_key, inserter(user_data, user_data.begin()));
   cout << "Verifying password\n";
@@ -145,5 +148,13 @@ string handleLogin(const string &username, const string &password) {
 
   // Step 4: Return token
   return token;
+}
+
+bool isUserAdmin(const string& userID) {
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
+  if (adminLevel == "2") {
+    return true;
+  }
+  return false;
 }
 } // namespace UserDB

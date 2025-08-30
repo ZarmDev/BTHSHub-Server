@@ -1,4 +1,5 @@
 #include "teamdatabase.h"
+#include "userdatabase.h"
 #include "global.h"
 #include "utils.h"
 #include <ctime>
@@ -13,6 +14,7 @@ using namespace std;
 Basics
 {
   "team:id:counter": "1",
+  // Everything here should be public information (in the hash)
   "team:1": {
     "name": "FRC 334",
     "created_at": "1781281",
@@ -24,7 +26,7 @@ Basics
   "teams:by_created": ("FRC 334"),
   "team:1:members": ("alice"),
   "team:1:members:by_joined": ("alice"),
-  "team:1:coaches": ("Ms.D", "Mr.C"),
+  "team:1:owners": ("Ms.D", "Mr.C"),
   "user:42:teams": ("FRC 334"),
   "user:42:teams:by_joined": ("FRC 334")
 }
@@ -43,6 +45,7 @@ Annoucements
 }
 */
 
+// This function ACTUALLY adds a user to the team. The other functions named similarly are just to check if there is valid permission
 bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   string team_members_key = "team:" + team_id + ":members";
   string user_teams_key = "user:" + user_id + ":teams";
@@ -82,8 +85,23 @@ bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPriv
   return true;
 }
 
-
-bool addOtherUserToTeam(const string& user_id, const string& team_id) {
+bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInvitedID, const string& team_id) {
+  // Regardless of everything, we know the user exists because of the middleware but the team may not exist so we should make sure it exists
+  if (!teamExists(team_id)) {
+    return false;
+  }
+  const string adminLevel = redis.hget("user:" + userInvitingID, "adminLevel").value();
+  bool isTeamOwner = redis.sismember("team:" + team_id + ":owners", UserDB::getUsernameFromUserId(userInvitingID));
+  // First case, regardless of the case, if you are an admin you can invite anyone
+  bool firstCase = adminLevel == "2";
+  // Second case, if you are a moderator, you are allowed to invite anyone as long as you own the team
+  bool secondCase = adminLevel == "1" && isTeamOwner;
+  // Only here, userBeingInvitedID should be used. If not, there is a problem with the function
+  if (firstCase || secondCase) {
+    bool addUserToTeamAttempt = addUserToTeamHelper(userBeingInvitedID, team_id);
+    return addUserToTeamAttempt;
+  }
+  return false;
 }
 
 long long createTeam(const string &teamName, const string& isPrivate, const string& userID) {
@@ -117,7 +135,7 @@ long long createTeam(const string &teamName, const string& isPrivate, const stri
   cout << "Created team '" << teamName << "' with ID " << teamId << endl;
 
   // Step 5: Add user to the created team and bypass the private check
-  TeamDB::addUserToTeam(userID, to_string(teamId), true);
+  redis.sadd("team:" + to_string(teamId) + ":owners", UserDB::getUsernameFromUserId(userID));
 
   auto t = getTeamInfo(teamId);
   printContainer(t);
@@ -125,14 +143,20 @@ long long createTeam(const string &teamName, const string& isPrivate, const stri
   return teamId;
 }
 
-bool teamExists(long long teamId) {
-  string team_key = "team:" + to_string(teamId);
+bool teamExists(const string& teamId) {
+  string team_key = "team:" + teamId;
   return redis.exists(team_key) == 1;
 }
 
 bool teamExistsByName(const string& teamName) {
   // redis.exists will return 1 if the key exists
   return redis.exists("teamname:" + teamName) == 1;
+}
+
+// does not check if owner is on the team
+bool userIsOnTeam(const string& teamName, const string& username) {
+  string teamKey = "team:" + getTeamIDFromName(teamName) + ":members";
+  return redis.sismember(teamKey, username);
 }
 
 unordered_set<string> getAllTeams() {

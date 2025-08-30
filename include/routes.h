@@ -19,3 +19,4 @@ string getTeamAnnoucements(HttpRequest &req);
 string addUserToTeam(HttpRequest &req);
 string addOtherUserToTeam(HttpRequest &req);
 string getTeamInfo(HttpRequest &req);
+string updateOtherUserAdminLevel(HttpRequest &req);
