@@ -1,6 +1,7 @@
 #include "global.h"
 #include "jwt-cpp/traits/nlohmann-json/traits.h"
 #include <jwt-cpp/jwt.h>
+#include <iostream>
 
 using namespace std;
 

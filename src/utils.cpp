@@ -1,4 +1,3 @@
-#include "global.h"
 #include <cstring>
 #include <fstream>
 #include <ostream>
@@ -6,7 +5,9 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include <cctype>
+#include <iostream>
+#include "global.h"
+
 #define redis Global::db
 
 using namespace std;

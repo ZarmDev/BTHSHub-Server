@@ -16,4 +16,5 @@ namespace UserDB {
     string getUserIdByUsername(const string& username);
     string getUsernameFromUserId(const string& userID);
     bool isUserAdmin(const string& userID);
+    const string& getPermissionLevel(const string& userID);
 };

@@ -8,26 +8,50 @@
 #include <fstream>
 #include <iostream>
 #include <sodium.h>
-#include <string>
 #include <sw/redis++/errors.h>
 #include <cstdlib>
+#include <filesystem>
 
 #define redis Global::db
 
 using namespace std;
 
+namespace fs = filesystem;
+
 // Global in this file
 string dir;
 string adminPassword;
 
-void readEnv() {
-  ifstream f("../.env");
+optional<fs::path> find_env_file(const vector<fs::path>& search_dirs) {
+  for (const auto& dir : search_dirs) {
+    fs::path candidate = dir / ".env";
+    if (fs::exists(candidate) && fs::is_regular_file(candidate)) {
+      return candidate;
+    }
+  }
+  return nullopt;
+}
 
-  if (!f.is_open()) {
+void readEnv() {
+  vector<fs::path> search_paths = {
+    fs::current_path(),
+    fs::current_path().parent_path()
+  };
+  optional<fs::path> env_path = find_env_file(search_paths);
+
+  if (!env_path.has_value())
+  {
     cerr << "You did not create an .env file. See README.md for more "
             "information.\n";
-    exit(1);
   }
+  ifstream f(env_path.value());
+  cout << "Current working directory: "
+              << filesystem::current_path() << filesystem::exists(".env") << endl;
+  // if (!f.is_open()) {
+  //   cerr << "You did not create an .env file. See README.md for more "
+  //           "information.\n";
+  //   exit(1);
+  // }
   string s;
 
   try {
@@ -66,7 +90,7 @@ int main(int argc, char **argv) {
 
 
   // NOT FOR PRODUCTION
-  server.post("/adminsetup", [](HttpRequest &req) -> std::string {
+  server.post("/adminsetup", [](HttpRequest &req) -> string {
     try {
       const string createAdmin = UserDB::createUser("admin", adminPassword, "");
       UserDB::grantAdminLevel("admin", "2");
@@ -86,17 +110,21 @@ int main(int argc, char **argv) {
   server.use(protectJWT);
   // protected for regular users. sends userID in req.extra
   server.get("/api/getallteams", getAllTeams);
-  server.get("/api/getteaminfo", getTeamInfo);
+  server.get("/api/getmyteams", getUserTeams);
+  server.get("/api/getpermissionlevel", getPermissionLevel);
   server.get("/api/getdailyannoucement", getDailyAnnoucement);
   server.post("/api/uploadschedule", uploadSchedule);
   server.post("/api/createannoucement", createTeamAnnoucement);
   server.get("/api/getannoucements", getTeamAnnoucements);
   server.post("/api/addusertoteam", addUserToTeam);
+  server.get("/api/getteammembers", getTeamMembers);
+  server.get("/api/getteamcoaches", getTeamCoaches);
 
   server.use(protectModeratorOrAdmin);
   // protected only for moderators (coaches, club execs) or admins. sends userID in req.extra
   server.post("/mod/createteam", createTeamRoute);
   server.post("/mod/addotherusertoteam", addOtherUserToTeam);
+  server.get("/mod/getteaminfo", getTeamInfo);
 
   server.use(protectAdmin);
   // protected only for admins. sends userID in req.extra

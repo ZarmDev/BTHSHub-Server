@@ -46,7 +46,7 @@ response = requests.post(url, data=data, headers={"Content-Type": "text/plain"})
 print(response.text)
 
 # Make username (the user) a moderator
-pf("mmaking username a moderator")
+pf("mmaking username a moderator" + adminToken)
 url = "http://localhost:4221/admin/updateotheruseradminlevel"
 data = "username\n" + "1"
 
@@ -87,6 +87,7 @@ print(response.text)
 
 url = "http://localhost:4221/api/createannoucement"
 for i in range(20):
+  print("sending " + str(i))
   data = {
     "teamName": "FRC 334",
     "content": str(i),
@@ -107,6 +108,12 @@ print(response.text)
 
 url = "http://localhost:4221/mod/addotherusertoteam"
 data = "FRC 334\nusername"
+
+response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+print(response.text)
+
+url = "http://localhost:4221/mod/getteaminfo"
+data = "FRC 334"
 
 response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)

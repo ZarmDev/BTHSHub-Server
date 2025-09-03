@@ -76,6 +76,7 @@ sudo pacman -S libsodium
 JWT_SECRET=xxx
 ADMINPASS=xxx
 ```
+4. Add your vcpkg root to CMakePresets.json at "CMAKE_TOOLCHAIN_FILE"
 # Development
 1. Run the redis server
 ```

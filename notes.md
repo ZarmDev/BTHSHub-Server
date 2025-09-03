@@ -6,3 +6,5 @@ curl -X POST -d "username\npassword\nemail" localhost:4221/createuser
 curl -X POST -d "username\npassword" localhost:4221/login
 # Clear redis DB
 redis-cli FLUSHALL
+# Start http server
+python -m http.server 8080

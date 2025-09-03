@@ -20,3 +20,7 @@ string addUserToTeam(HttpRequest &req);
 string addOtherUserToTeam(HttpRequest &req);
 string getTeamInfo(HttpRequest &req);
 string updateOtherUserAdminLevel(HttpRequest &req);
+string getUserTeams(HttpRequest &req);
+string getPermissionLevel(HttpRequest &req);
+string getTeamMembers(HttpRequest &req);
+string getTeamCoaches(HttpRequest &req);

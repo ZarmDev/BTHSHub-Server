@@ -10,6 +10,7 @@
 #define redis Global::db
 
 using namespace std;
+
 /*
 Basics
 {
@@ -49,6 +50,8 @@ Annoucements
 bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   string team_members_key = "team:" + team_id + ":members";
   string user_teams_key = "user:" + user_id + ":teams";
+
+  lock_guard<mutex> lock(Global::redisMutex);
 
   // Add user to team's member set
   redis.sadd(team_members_key, user_id);
@@ -104,16 +107,17 @@ bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInv
   return false;
 }
 
-long long createTeam(const string &teamName, const string& isPrivate, const string& userID) {
+const string& createTeam(const string &teamName, const string& isPrivate, const string& userID) {
   if (teamName.contains("\\")) {
-    return -1;
+    return "";
   }
+  lock_guard<mutex> lock(Global::redisMutex);
   // Step 1: Generate a new team ID by incrementing the value at the key
   // "team:id:counter"
-  long long teamId = redis.incr("team:id:counter");
+  const string teamId = to_string(redis.incr("team:id:counter"));
 
   // Step 2: Store team metadata
-  const string teamHashKey = "team:" + to_string(teamId);
+  const string teamHashKey = "team:" + teamId;
   const string teamPointerKey =  "teamname:" + teamName;
 
   /* redis.hset("user:100", "name", "Alice"); */
@@ -122,7 +126,7 @@ long long createTeam(const string &teamName, const string& isPrivate, const stri
                                      {"created_at", to_string(time(nullptr))},
                                      {"private", isPrivate}};
   redis.hmset(teamHashKey, m.begin(), m.end());
-  redis.set(teamPointerKey, to_string(teamId));
+  redis.set(teamPointerKey, teamId);
 
   // Step 3: Add to tracking set
   // Use teams:all for unordered, fast set operations. Ex: Find team exists, getting list of all teams
@@ -130,12 +134,12 @@ long long createTeam(const string &teamName, const string& isPrivate, const stri
 
   // Step 4: Add to sorted set by timestamp (less useful than above)
   // Use teams:by_created for ordered queries (by creation time). Ex: Show new teams
-  redis.zadd("teams:by_created", to_string(teamId), time(nullptr));
+  redis.zadd("teams:by_created", teamId, time(nullptr));
 
   cout << "Created team '" << teamName << "' with ID " << teamId << endl;
 
   // Step 5: Add user to the created team and bypass the private check
-  redis.sadd("team:" + to_string(teamId) + ":owners", UserDB::getUsernameFromUserId(userID));
+  redis.sadd("team:" + teamId + ":owners", UserDB::getUsernameFromUserId(userID));
 
   auto t = getTeamInfo(teamId);
   printContainer(t);
@@ -165,8 +169,15 @@ unordered_set<string> getAllTeams() {
   return set;
 }
 
-unordered_map<string, string> getTeamInfo(long long teamId) {
-  string team_key = "team:" + to_string(teamId);
+  // get the teams OF a user
+  unordered_set<string> getUserTeams(const string& userID) {
+    unordered_set<string> set;
+    redis.smembers("user:" + userID + ":teams", inserter(set, set.begin()));
+    return set;
+  }
+
+unordered_map<string, string> getTeamInfo(const string& teamId) {
+  string team_key = "team:" + teamId;
   unordered_map<string, string> hash;
   redis.hgetall(team_key, inserter(hash, hash.end()));
   return hash;
@@ -174,7 +185,7 @@ unordered_map<string, string> getTeamInfo(long long teamId) {
 
 // void register_teamName(Redis& redis, const string& teamName, long long
 // teamId) {
-//     redis.set("team:name:" + teamName, to_string(teamId));
+//     redis.set("team:name:" + teamName, teamId);
 // }
 
 optional<string> getTeamIdByName(const string &teamName) {
@@ -190,6 +201,8 @@ userIDOwner: the owner of the annoucement (the corresponding user ID)
 mentions: an array of the people who are mentioned in the post (get notifications). If empty, it's assumed that it's a default annoucement where EVERYONE will be notified
 */
 void postAnnoucement(const string& teamName, const string& content, const string& userIDOwner, vector<string> mentions) {
+  lock_guard<mutex> lock(Global::redisMutex); // Lock during Redis operations
+  
   const string teamKey = teamName + ":annoucement";
   long long annoucement_id = redis.incr(teamKey + ":id:counter");
   unordered_map<string, string> m = {{"content", content},

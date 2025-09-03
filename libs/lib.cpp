@@ -9,15 +9,15 @@
 #include <utility>
 #include <vector>
 // ?
-#include <sys/types.h>
 #include <unistd.h>
+#include <sys/types.h>
 // Socket/linux networking
 #include "lib.h"
-#include "utils.h"
-#include <arpa/inet.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include "global.h"
+#include "utils.h"
 
 using namespace std;
 
@@ -148,7 +148,7 @@ void Server::handleClient(int client_fd) {
   int n = read(client_fd, buffer, maximumCharacters);
   if (n < 0)
     cout << ("ERROR reading from socket");
-  // printf("Here is the message: %s\n",buffer);
+
   string bufferStr(buffer);
   // Check if it exceeds the maximum character size (the read function cuts it
   // off anyways so you can just use == to check)
@@ -245,7 +245,8 @@ void Server::handleClient(int client_fd) {
 
   unordered_map<string, string> extra;
   HttpRequest req = {httpMethod, url, protocol, headers, data, extra};
-  try {  
+  try
+  {
     string response = this->handleRequest(req);
     // send(sockfd, buf, len, flags);
     // buf is the response
@@ -253,9 +254,12 @@ void Server::handleClient(int client_fd) {
     // flags is ???
     // see the notes.md file
     send(client_fd, response.c_str(), response.length(), 0);
+    close(client_fd);
+  } catch (const exception& e) {
+    cerr << "Error " << e.what() << '\n';
   } catch (...) {
-    cerr << "Error trying to handle request\n";
-    string response = sendString("404 Not Found", "An error occured while handling the request");
+    cerr << "Serious error trying to handle request\n";
+    string response = sendString("404 Not Found", "An error occurred while handling the request");
     send(client_fd, response.c_str(), response.length(), 0);
   }
 }
@@ -308,7 +312,6 @@ string Server::handleRequest(HttpRequest &req) {
       }
     }
   }
-  cout << req.method << '\n';
   // Then handle each request
   if (req.method == "GET") {
     // This just finds the requested URL in the map with routes
@@ -329,7 +332,6 @@ string Server::handleRequest(HttpRequest &req) {
       return sendString("404 Not Found", errorMsg);
     }
   } else if (req.method == "OPTIONS") {
-    cout << "FOUND OPTIONS\n";
     return sendString("200 OK", ""); 
   }
   return sendString("404 Not Found", errorMsg);
@@ -360,14 +362,16 @@ string Response::toString() const {
 // Just for quick sending
 string sendString(const string &status, const string &body) {
   string response = "HTTP/1.1 " + status + "\r\n";
-  response.append("Content-Type: text/plain\r\n");
+  response.append("Content-Type: application/json\r\n");
 
-  if (Global::serverOrigin != "") {
+  if (!Global::serverOrigin.empty()) {
     response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
     response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
     response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+    response.append("Access-Control-Allow-Credentials: true\r\n");
   }
 
+  response.append("Connection: close\r\n");
   response.append("Content-Length: " + to_string(body.length()) + "\r\n" +
                   "\r\n");
   response.append(body);

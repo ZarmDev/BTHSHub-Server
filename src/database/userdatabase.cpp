@@ -35,6 +35,7 @@ namespace UserDB {
 // Add an existing user to an existing team
 const string createUser(const string &username, const string &password,
                 const string &email) {
+  lock_guard<mutex> lock(Global::redisMutex);
   // Backslashes in team names, usernames will screw with the places where I used split to get data from req.data
   // Could have parsed the JSON, but I prefer something easy to make and use
   if (username.contains("\\") || password.contains("\\") || email.contains("\\")) {
@@ -156,5 +157,10 @@ bool isUserAdmin(const string& userID) {
     return true;
   }
   return false;
+}
+
+  const string& getPermissionLevel(const string& userID)
+{
+  return redis.hget("user:" + userID, "adminLevel").value();
 }
 } // namespace UserDB

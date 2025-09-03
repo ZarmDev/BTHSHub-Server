@@ -11,10 +11,10 @@ using namespace std;
 using namespace sw::redis;
 
 namespace TeamDB {
-    long long createTeam(const string &teamName, const string& isPrivate, const string& userID);
+    const string& createTeam(const string &teamName, const string& isPrivate, const string& userID);
     bool teamExists(const string& teamId);
     unordered_set<string> getAllTeams();
-    unordered_map<string, string> getTeamInfo(long long team_id);
+    unordered_map<string, string> getTeamInfo(const string& teamId);
     optional<string> getTeamIdByName(const string& team_name);
     bool teamExistsByName(const string& team_name);
     int getNumOfAnnoucements(string& teamName);
@@ -24,4 +24,5 @@ namespace TeamDB {
     bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPrivate);
     bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInvitedID, const string& team_id);
     bool userIsOnTeam(const string& teamName, const string& username);
+    unordered_set<string> getUserTeams(const string& userID);
 };

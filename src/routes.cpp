@@ -49,9 +49,6 @@ string createTeamRoute(HttpRequest &req) {
     return sendString("404 Not Found", "Malformed request!");
   }
   TeamDB::createTeam(teamName, isPrivate == "0" ? "false" : "true", getUserIdFromJWT(req));
-  unordered_set<string> teams = TeamDB::getAllTeams();
-  printContainer(teams);
-  printContainer(TeamDB::getTeamInfo(1));
   return sendString("200 OK", "Team " + parsed.at(0) + " successfully created!");
 }
 
@@ -70,6 +67,11 @@ string createTeamAnnoucement(HttpRequest &req) {
   const string content = j["content"];
   vector<string> mentions = j["mentions"].get<vector<string>>();
   const string userID = getUserIdFromJWT(req);
+  // Make sure user is on the team
+  if (!TeamDB::userIsOnTeam(teamName, UserDB::getUsernameFromUserId(userID)))
+  {
+    return sendString("404 Not Found", "User is not a member of " + teamName + "!");
+  }
   TeamDB::postAnnoucement(teamName, content, userID, mentions);
   
   return sendString("200 OK", "Announcement created successfully");
@@ -125,8 +127,8 @@ string createUserRoute(HttpRequest &req) {
     const string createUserAttempt =
         UserDB::createUser(parsed.at(0), parsed.at(1), parsed.at(2));
     return sendString("200 OK", createUserAttempt);
-  } catch (const runtime_error &e) {
-    cerr << "Redis error: " << e.what() << endl;
+  } catch (const std::exception &e) {
+    cerr << "Error at createUserRoute: " << e.what() << endl;
     return sendString("404 Not Found", "An error occured on our side");
   }
 }
@@ -196,7 +198,7 @@ string getTeamInfo(HttpRequest &req) {
     }
   }
   const string teamID = TeamDB::getTeamIDFromName(req.data);
-  nlohmann::json j = TeamDB::getTeamInfo(stoll(teamID));
+  nlohmann::json j = TeamDB::getTeamInfo(teamID);
   return sendString("200 OK", j.dump());
 }
 
@@ -221,4 +223,37 @@ string updateOtherUserAdminLevel(HttpRequest &req) {
     UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
   }
   return sendString("200 OK", "Changed permission successfully!");
+}
+
+/*
+Expect req.data to be:
+*/
+string getUserTeams(HttpRequest &req) {
+  unordered_set<string> userTeams = TeamDB::getUserTeams(getUserIdFromJWT(req));
+  nlohmann::json j = userTeams;
+  return sendString("200 OK", j.dump());
+}
+
+/*
+Expect req.data to be:
+*/
+string getPermissionLevel(HttpRequest &req) {
+  const string& permissionLevel = UserDB::getPermissionLevel(getUserIdFromJWT(req));
+  return sendString("200 OK", permissionLevel);
+}
+
+/*
+Expect req.data to be:
+teamname
+*/
+string getTeamMembers(HttpRequest &req) {
+  // TODO
+}
+
+/*
+Expect req.data to be:
+teamname
+*/
+string getTeamCoaches(HttpRequest &req) {
+  // TODO
 }
