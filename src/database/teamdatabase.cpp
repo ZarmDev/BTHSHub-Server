@@ -6,6 +6,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <sw/redis++/utils.h>
 
 #define redis Global::db
 
@@ -25,8 +26,9 @@ Basics
   "team:1:annoucements": ("1", "2", "3")
   "teams:all": ("FRC 334"),
   "teams:by_created": ("FRC 334"),
-  "team:1:members": ("alice"),
-  "team:1:members:by_joined": ("alice"),
+  // members includes the coaches as well. so, on client side you have to check owners and members
+  "team:1:members": ("alice", "Ms.D", "Mr.C"),
+  "team:1:members:by_joined": ("alice", "Mr.C", "Ms.D"),
   "team:1:owners": ("Ms.D", "Mr.C"),
   "user:42:teams": ("FRC 334"),
   "user:42:teams:by_joined": ("FRC 334")
@@ -51,10 +53,8 @@ bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   string team_members_key = "team:" + team_id + ":members";
   string user_teams_key = "user:" + user_id + ":teams";
 
-  lock_guard<mutex> lock(Global::redisMutex);
-
   // Add user to team's member set
-  redis.sadd(team_members_key, user_id);
+  redis.sadd(team_members_key, UserDB::getUsernameFromUserId(user_id));
 
   // Add team to user's team set
   redis.sadd(user_teams_key, team_id);
@@ -65,6 +65,12 @@ bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   redis.zadd(user_teams_key + ":by_joined", user_id, now);
 
   cout << "Added user " << user_id << " to team " << team_id << endl;
+  return true;
+}
+
+bool addOwnerToTeamHelper(const string& userID, const string& teamID) {
+  redis.sadd("team:" + teamID + ":owners", UserDB::getUsernameFromUserId(userID));
+
   return true;
 }
 
@@ -89,8 +95,14 @@ bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPriv
 }
 
 bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInvitedID, const string& team_id) {
+  lock_guard<mutex> lock(Global::redisMutex);
   // Regardless of everything, we know the user exists because of the middleware but the team may not exist so we should make sure it exists
-  if (!teamExists(team_id)) {
+  if (!teamExistsById(team_id)) {
+    cout << "Team does not EXIST!\n";
+    return false;
+  }
+  if (userBeingInvitedID == userInvitingID) {
+    cout << "Cannot invite yourself...\n";
     return false;
   }
   const string adminLevel = redis.hget("user:" + userInvitingID, "adminLevel").value();
@@ -102,6 +114,7 @@ bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInv
   // Only here, userBeingInvitedID should be used. If not, there is a problem with the function
   if (firstCase || secondCase) {
     bool addUserToTeamAttempt = addUserToTeamHelper(userBeingInvitedID, team_id);
+    cout << addUserToTeamAttempt << " -> addUserToTeamAttempt\n";
     return addUserToTeamAttempt;
   }
   return false;
@@ -111,7 +124,9 @@ const string& createTeam(const string &teamName, const string& isPrivate, const 
   if (teamName.contains("\\")) {
     return "";
   }
+
   lock_guard<mutex> lock(Global::redisMutex);
+
   // Step 1: Generate a new team ID by incrementing the value at the key
   // "team:id:counter"
   const string teamId = to_string(redis.incr("team:id:counter"));
@@ -138,8 +153,9 @@ const string& createTeam(const string &teamName, const string& isPrivate, const 
 
   cout << "Created team '" << teamName << "' with ID " << teamId << endl;
 
-  // Step 5: Add user to the created team and bypass the private check
-  redis.sadd("team:" + teamId + ":owners", UserDB::getUsernameFromUserId(userID));
+  // Step 5: Add user to the created team as a COACH AND MEMBER and bypass the private check
+  addUserToTeamHelper(userID, teamId);
+  addOwnerToTeamHelper(userID, teamId);
 
   auto t = getTeamInfo(teamId);
   printContainer(t);
@@ -147,7 +163,7 @@ const string& createTeam(const string &teamName, const string& isPrivate, const 
   return teamId;
 }
 
-bool teamExists(const string& teamId) {
+bool teamExistsById(const string& teamId) {
   string team_key = "team:" + teamId;
   return redis.exists(team_key) == 1;
 }
@@ -159,7 +175,8 @@ bool teamExistsByName(const string& teamName) {
 
 // does not check if owner is on the team
 bool userIsOnTeam(const string& teamName, const string& username) {
-  string teamKey = "team:" + getTeamIDFromName(teamName) + ":members";
+  OptionalString teamID = getTeamIDFromName(teamName);
+  string teamKey = "team:" + teamID.value() + ":members";
   return redis.sismember(teamKey, username);
 }
 
@@ -169,12 +186,24 @@ unordered_set<string> getAllTeams() {
   return set;
 }
 
-  // get the teams OF a user
-  unordered_set<string> getUserTeams(const string& userID) {
-    unordered_set<string> set;
-    redis.smembers("user:" + userID + ":teams", inserter(set, set.begin()));
-    return set;
-  }
+// get the teams OF a user
+unordered_set<string> getUserTeams(const string& userID) {
+  unordered_set<string> set;
+  redis.smembers("user:" + userID + ":teams", inserter(set, set.begin()));
+  return set;
+}
+
+unordered_set<string> getTeamMembers(const string& teamID) {
+  unordered_set<string> set;
+  redis.smembers("team:" + teamID + ":members", inserter(set, set.begin()));
+  return set;
+}
+
+unordered_set<string> getTeamOwners(const string& teamID) {
+  unordered_set<string> set;
+  redis.smembers("team:" + teamID + ":owners", inserter(set, set.begin()));
+  return set;
+}
 
 unordered_map<string, string> getTeamInfo(const string& teamId) {
   string team_key = "team:" + teamId;
@@ -183,17 +212,14 @@ unordered_map<string, string> getTeamInfo(const string& teamId) {
   return hash;
 }
 
+OptionalString getTeamIDFromName(const string& teamName) {
+  return redis.get("teamname:" + teamName);
+}
+
 // void register_teamName(Redis& redis, const string& teamName, long long
 // teamId) {
 //     redis.set("team:name:" + teamName, teamId);
 // }
-
-optional<string> getTeamIdByName(const string &teamName) {
-  auto val = redis.get("team:name:" + teamName);
-  if (val)
-    return *val;
-  return nullopt;
-}
 
 /*
 content: content in markdown form
@@ -238,9 +264,5 @@ nlohmann::json getRangeOfAnnoucements(const string& teamName, int start, int end
     }
   }
   return arr;
-}
-
-const string getTeamIDFromName(const string& teamName) {
-  return redis.get("teamname:" + teamName).value();
 }
 } // namespace TeamDB

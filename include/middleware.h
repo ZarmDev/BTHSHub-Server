@@ -10,3 +10,4 @@ bool protectJWT(HttpRequest &req);
 bool protectModerator(HttpRequest &req);
 bool protectAdmin(HttpRequest &req);
 bool protectModeratorOrAdmin(HttpRequest &req);
+bool protectTeamMember(HttpRequest &req);

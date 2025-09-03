@@ -3,6 +3,7 @@
 #include "jwt.h"
 #include "pdf.h"
 #include <nlohmann/json.hpp>
+#include <iostream>
 
 #define redis Global::db
 
@@ -101,8 +102,7 @@ string getUsernameFromUserId(const string& userID) {
     return "";
   }
 
-  string user_id = *user_id_opt;
-  return user_id;
+  return user_id_opt.value();
 }
 
 bool grantAdminLevel(const string& username, string level) {

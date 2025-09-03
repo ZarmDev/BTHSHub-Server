@@ -2,7 +2,11 @@
 #include "lib.h"
 #include "pdf.h"
 #include "userdatabase.h"
+#include "teamdatabase.h"
+#include "utils.h"
 #include <nlohmann/json.hpp>
+#include <sw/redis++/utils.h>
+#include <iostream>
 
 #define redis Global::db
 
@@ -72,4 +76,20 @@ bool protectAdmin(HttpRequest &req) {
 
 bool protectModeratorOrAdmin(HttpRequest &req) {
   return protectRoute(req, AccessLevel::MOD_OR_ADMIN);
+}
+
+bool protectTeamMember(HttpRequest &req) {
+  const string userID = getValueFromMiddleware(req, "userID");
+  const string username = UserDB::getUsernameFromUserId(userID);
+  cout << userID << " " << username << "" << req.data << '\n';
+  if (TeamDB::userIsOnTeam(req.data, username) || UserDB::isUserAdmin(userID)) {
+    OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
+    if (teamID) {
+      cout << "teamID found " << teamID.value() << '\n';
+      req.extra["teamID"] = teamID.value();
+    }
+    return true;
+  } else {
+    return false;
+  }
 }

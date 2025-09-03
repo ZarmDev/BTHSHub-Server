@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   }
   // Initalize server on 4221
   server.init("4221");
-  // NOT FOR PRODUCTION
+  // NOT FOR PRODUCTION. Change to server url during production.
   Global::serverOrigin = "*";
 
 
@@ -110,21 +110,24 @@ int main(int argc, char **argv) {
   server.use(protectJWT);
   // protected for regular users. sends userID in req.extra
   server.get("/api/getallteams", getAllTeams);
-  server.get("/api/getmyteams", getUserTeams);
   server.get("/api/getpermissionlevel", getPermissionLevel);
   server.get("/api/getdailyannoucement", getDailyAnnoucement);
   server.post("/api/uploadschedule", uploadSchedule);
+
+  // only allow real users who are also members of the team, an admin or a coach/moderator
+  server.use({protectJWT, protectTeamMember});
+  server.get("/api/getteammembers", getTeamMembers);
+  server.get("/api/getteamcoaches", getTeamCoaches);
+  server.get("/api/getmyteams", getUserTeams);
   server.post("/api/createannoucement", createTeamAnnoucement);
   server.get("/api/getannoucements", getTeamAnnoucements);
   server.post("/api/addusertoteam", addUserToTeam);
-  server.get("/api/getteammembers", getTeamMembers);
-  server.get("/api/getteamcoaches", getTeamCoaches);
+  server.get("/api/getteaminfo", getTeamInfo);
 
   server.use(protectModeratorOrAdmin);
   // protected only for moderators (coaches, club execs) or admins. sends userID in req.extra
   server.post("/mod/createteam", createTeamRoute);
   server.post("/mod/addotherusertoteam", addOtherUserToTeam);
-  server.get("/mod/getteaminfo", getTeamInfo);
 
   server.use(protectAdmin);
   // protected only for admins. sends userID in req.extra

@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include "global.h"
+#include "lib.h"
 
 #define redis Global::db
 
@@ -105,3 +106,13 @@ string trim(const string &str) {
 //     }
 //   }
 // }
+
+const string getValueFromMiddleware(HttpRequest &req, const string& value) {
+  auto it = req.extra.find(value);
+  if (it == req.extra.end()) {
+    cerr << "No value found! Something is not right here.\n";
+    return "";
+  }
+  const string& found = it->second;
+  return found;
+}

@@ -34,6 +34,10 @@ const string generateToken(const string &user_id) {
 
 // returns userID if success, otherwise an empty string
 const string verifyJWTToken(const string &token) {
+  if (token.length() > 1000) {
+    cout << "Attempt to send huge token to server\n";
+    return "";
+  }
   try {
     // Parse/decode the JWT token
     auto decoded = jwt::decode<traits>(token);

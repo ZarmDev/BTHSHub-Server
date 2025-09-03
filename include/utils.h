@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include "lib.h"
 using namespace std;
 
 string readFile(const string &path);
@@ -11,6 +12,7 @@ vector<string> split(string str,string sep);
 void printAllRedisKeys();
 string removeWhitespace(const string& str);
 string trim(const string& str);
+const string getValueFromMiddleware(HttpRequest &req, const string& value);
 
 // void printSet(unordered_set<string> const &s);
 // void printMap(const unordered_map<string, string>& m);

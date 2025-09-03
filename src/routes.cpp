@@ -6,21 +6,11 @@
 #include "utils.h"
 #include <iostream>
 #include <sodium.h>
-#include <stdexcept>
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
 
 using namespace std;
-
-const string getUserIdFromJWT(HttpRequest &req) {
-  auto it = req.extra.find("userID");
-  if (it == req.extra.end()) {
-    cerr << "No userID supplied! Something is not right here.\n";
-  }
-  const string& userID = it->second;
-  return userID;
-}
 
 /*
 Expect req.data to be:
@@ -28,6 +18,7 @@ teamname\n
 iftheteamisprivate (0 for false, 1 for true)
 */
 string createTeamRoute(HttpRequest &req) {
+  cout << req.data << '\n';
   vector<string> parsed = split(req.data, "\n");
   const string teamName = parsed.at(0);
   cout << "Creating " << teamName << "...\n";
@@ -48,7 +39,7 @@ string createTeamRoute(HttpRequest &req) {
   if (isPrivate != "0" && isPrivate != "1") {
     return sendString("404 Not Found", "Malformed request!");
   }
-  TeamDB::createTeam(teamName, isPrivate == "0" ? "false" : "true", getUserIdFromJWT(req));
+  TeamDB::createTeam(teamName, isPrivate == "0" ? "false" : "true", getValueFromMiddleware(req, "userID"));
   return sendString("200 OK", "Team " + parsed.at(0) + " successfully created!");
 }
 
@@ -66,23 +57,32 @@ string createTeamAnnoucement(HttpRequest &req) {
   }
   const string content = j["content"];
   vector<string> mentions = j["mentions"].get<vector<string>>();
-  const string userID = getUserIdFromJWT(req);
+  const string userID = getValueFromMiddleware(req, "userID");
   // Make sure user is on the team
-  if (!TeamDB::userIsOnTeam(teamName, UserDB::getUsernameFromUserId(userID)))
+  if (TeamDB::userIsOnTeam(teamName, UserDB::getUsernameFromUserId(userID)) || UserDB::isUserAdmin(userID))
   {
-    return sendString("404 Not Found", "User is not a member of " + teamName + "!");
+    TeamDB::postAnnoucement(teamName, content, userID, mentions);
+    return sendString("200 OK", "Announcement created successfully");
   }
-  TeamDB::postAnnoucement(teamName, content, userID, mentions);
-  
-  return sendString("200 OK", "Announcement created successfully");
+  return sendString("404 Not Found", "User is not a member of " + teamName + "!");
+
 }
 
+/*
+Expect req.data to be:
+teamName
+*/
 string getTeamAnnoucements(HttpRequest &req) {
-  int numOfAnnoucements = TeamDB::getNumOfAnnoucements(req.data);
-  int past50 = (numOfAnnoucements - 50);
-  // Get the past 50 unless there is less than 50, then just get all of them
-  nlohmann::json annoucements = TeamDB::getRangeOfAnnoucements(req.data, past50 > 0 ? past50 : 0, numOfAnnoucements);
-  return sendString("200 OK", annoucements.dump());
+  const string userID = getValueFromMiddleware(req, "userID");
+  if (TeamDB::userIsOnTeam(req.data, UserDB::getUsernameFromUserId(userID)) || UserDB::isUserAdmin(userID))
+  {
+    int numOfAnnoucements = TeamDB::getNumOfAnnoucements(req.data);
+    int past50 = (numOfAnnoucements - 50);
+    // Get the past 50 unless there is less than 50, then just get all of them
+    nlohmann::json annoucements = TeamDB::getRangeOfAnnoucements(req.data, past50 > 0 ? past50 : 0, numOfAnnoucements);
+    return sendString("200 OK", annoucements.dump());
+  }
+  return sendString("404 Not Found", "User is not a member of " + req.data + "!");
 }
 
 /*
@@ -90,8 +90,8 @@ Expect req.data to be:
 teamname
 */
 string addUserToTeam(HttpRequest &req) {
-  const string userID = getUserIdFromJWT(req);
-  const string teamID = TeamDB::getTeamIDFromName(req.data);
+  const string userID = getValueFromMiddleware(req, "userID");
+  const string teamID = getValueFromMiddleware(req, "teamID");
   bool addToTeam = TeamDB::addUserToTeam(userID, teamID, false);
   if (addToTeam) {
     return sendString("200 OK", "Added user to " + req.data);
@@ -103,16 +103,19 @@ string addUserToTeam(HttpRequest &req) {
 /*
 Expect req.data to be:
 teamname
-usertoadd
+usertoadd (in username form)
 */
 string addOtherUserToTeam(HttpRequest &req) {
-  const string verifiedUserID = getUserIdFromJWT(req);
   vector<string> parsed = split(req.data, "\n");
   const string teamName = parsed.at(0);
-  const string teamID = TeamDB::getTeamIDFromName(teamName);
-  const string userInviting = getUserIdFromJWT(req);
-  const string userBeingInvited = parsed.at(1);
-  bool addToTeam = TeamDB::addOtherUserToTeam(userInviting, userBeingInvited, teamID);
+  OptionalString teamID = TeamDB::getTeamIDFromName(teamName);
+  if (!teamID) {
+    return sendString("404 Not Found", "Your team ID is invalid");
+  }
+  const string userInviting = getValueFromMiddleware(req, "userID");
+  const string userBeingInvited = UserDB::getUserIdByUsername(parsed.at(1));
+  cout << userInviting << " is inviting " << userBeingInvited << " to " << teamName << '\n';
+  bool addToTeam = TeamDB::addOtherUserToTeam(userInviting, userBeingInvited, teamID.value());
   if (addToTeam) {
     return sendString("200 OK", "Added user to " + teamName);
   } else {
@@ -187,17 +190,9 @@ Expect req.data to be:
 teamname
 */
 string getTeamInfo(HttpRequest &req) {
-  const string userID = getUserIdFromJWT(req);
-  const string username = UserDB::getUsernameFromUserId(userID);
-  cout << userID << " " << username << '\n';
   // Only give the team information if you are on the team
-  if (!TeamDB::userIsOnTeam(req.data, username)) {
-    // However, if you are an admin we can allow you through
-    if (!UserDB::isUserAdmin(userID)) {
-      return sendString("404 Not Found", "Team does not exist or you are not on the team!");
-    }
-  }
-  const string teamID = TeamDB::getTeamIDFromName(req.data);
+  const string teamID = getValueFromMiddleware(req, "teamID");
+  cout << teamID << '\n';
   nlohmann::json j = TeamDB::getTeamInfo(teamID);
   return sendString("200 OK", j.dump());
 }
@@ -229,7 +224,7 @@ string updateOtherUserAdminLevel(HttpRequest &req) {
 Expect req.data to be:
 */
 string getUserTeams(HttpRequest &req) {
-  unordered_set<string> userTeams = TeamDB::getUserTeams(getUserIdFromJWT(req));
+  unordered_set<string> userTeams = TeamDB::getUserTeams(getValueFromMiddleware(req, "userID"));
   nlohmann::json j = userTeams;
   return sendString("200 OK", j.dump());
 }
@@ -238,7 +233,7 @@ string getUserTeams(HttpRequest &req) {
 Expect req.data to be:
 */
 string getPermissionLevel(HttpRequest &req) {
-  const string& permissionLevel = UserDB::getPermissionLevel(getUserIdFromJWT(req));
+  const string& permissionLevel = UserDB::getPermissionLevel(getValueFromMiddleware(req, "userID"));
   return sendString("200 OK", permissionLevel);
 }
 
@@ -247,7 +242,9 @@ Expect req.data to be:
 teamname
 */
 string getTeamMembers(HttpRequest &req) {
-  // TODO
+  unordered_set<string> teamMembers = TeamDB::getTeamMembers(getValueFromMiddleware(req, "teamID"));
+  nlohmann::json j = teamMembers;
+  return sendString("404 Not Found", j.dump());
 }
 
 /*
@@ -255,5 +252,7 @@ Expect req.data to be:
 teamname
 */
 string getTeamCoaches(HttpRequest &req) {
-  // TODO
+  unordered_set<string> teamOwners = TeamDB::getTeamOwners(getValueFromMiddleware(req, "teamID"));
+  nlohmann::json j = teamOwners;
+  return sendString("404 Not Found", j.dump());
 }

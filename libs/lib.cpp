@@ -137,44 +137,76 @@ string replace_all(string str, const string &from, const string &to) {
 // I saw an example on Codecrafters doing it this way and I have to say they did
 // a good job
 void Server::handleClient(int client_fd) {
-  // Setup a buffer with any amount of characters for now...
   char buffer[maximumCharacters];
-  
-  // Clear buffer in case the memory given to handleClient wasn't cleared
   memset(buffer, 0, maximumCharacters);
 
-  // https://www.bogotobogo.com/cplusplus/sockets_server_client.php
-  // Reads the value from the client and returns the length of the response
-  int n = read(client_fd, buffer, maximumCharacters);
-  if (n < 0)
-    cout << ("ERROR reading from socket");
+  // First read to get headers
+  int n = read(client_fd, buffer, maximumCharacters - 1);
+  if (n <= 0) {
+    cout << "ERROR reading from socket\n";
+    close(client_fd);
+    return;
+  }
+  
+  buffer[n] = '\0';
+  
+  // Parse headers to find Content-Length (created using AI after oroblems with reading a fixed length)
+  string headers_str(buffer, n);
+  size_t header_end = headers_str.find("\r\n\r\n");
+  int content_length = 0;
+  
+  if (header_end != string::npos) {
+    // Look for Content-Length header
+    size_t cl_pos = headers_str.find("Content-Length:");
+    if (cl_pos != string::npos && cl_pos < header_end) {
+      size_t cl_start = cl_pos + 15; // "Content-Length:" length
+      size_t cl_end = headers_str.find("\r\n", cl_start);
+      if (cl_end != string::npos) {
+        string cl_value = headers_str.substr(cl_start, cl_end - cl_start);
+        // Trim whitespace
+        cl_value.erase(0, cl_value.find_first_not_of(" \t"));
+        cl_value.erase(cl_value.find_last_not_of(" \t") + 1);
+        content_length = stoi(cl_value);
+      }
+    }
+    
+    // Calculate how much body data we already have
+    int headers_length = header_end + 4; // +4 for "\r\n\r\n"
+    int body_received = n - headers_length;
+    
+    // Read remaining body data if needed
+    while (body_received < content_length && n < maximumCharacters - 1) {
+      int additional = read(client_fd, buffer + n, maximumCharacters - 1 - n);
+      if (additional <= 0) break;
+      n += additional;
+      body_received += additional;
+    }
+    
+    buffer[n] = '\0';
+  }
 
-  string bufferStr(buffer);
-  // Check if it exceeds the maximum character size (the read function cuts it
-  // off anyways so you can just use == to check)
-  if (bufferStr.length() == maximumCharacters) {
+  string bufferStr(buffer, n);
+  
+  if (n >= maximumCharacters - 1) {
+    cout << "Request too large, dropping connection\n";
+    close(client_fd);
     return;
   }
 
-  // Artificially add \n to ensure that all data is pushed to the map below
-  strcat(buffer, "\n");
-
+  // Parse the HTTP request (Not created by AI, created by me)
   string curr;
   string httpMethod;
   string url;
   string protocol;
   string data;
-  // Unfortunately it says that headers are NOT always in the same order, so we
-  // have to use a map for each header According to AI, you should use a
-  // unordered map...
   unordered_map<string, string> headers;
-  vector<string> lines = {};
-  enum STATE { TYPE, URL, PROTO, FIRST, SECOND, DATA };
-  enum STATE state = STATE::TYPE;
-  pair<string, string> headerData;
-  // Loop through each character in the char* array until the null byte
-  for (int i = 0; buffer[i] != '\0'; ++i) {
+  enum STATE { TYPE, URL, PROTO, HEADER_NAME, HEADER_VALUE, BODY };
+  STATE state = STATE::TYPE;
+  string headerName;
+  
+  for (int i = 0; i < n; ++i) {
     char c = buffer[i];
+    
     if (state == STATE::TYPE) {
       if (c == ' ') {
         httpMethod = curr;
@@ -192,47 +224,42 @@ void Server::handleClient(int client_fd) {
         curr += c;
       }
     } else if (state == STATE::PROTO) {
-      if (c == '\r') {
+      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
         protocol = curr;
         curr = "";
-        i++;
-        state = STATE::FIRST;
+        i++; // Skip the \n
+        state = STATE::HEADER_NAME;
       } else {
         curr += c;
       }
-    } else if (state == STATE::FIRST) {
-      if (c == '\r') {
-        curr = "";
-        state = STATE::DATA;
-        i++;
+    } else if (state == STATE::HEADER_NAME) {
+      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
+        // Empty line means end of headers
+        i++; // Skip the \n
+        state = STATE::BODY;
       } else if (c == ':') {
-        headerData.first = curr;
+        headerName = curr;
         curr = "";
-        state = STATE::SECOND;
-        i++;
+        state = STATE::HEADER_VALUE;
+        // Skip the space after colon if present
+        if (i + 1 < n && buffer[i + 1] == ' ') {
+          i++;
+        }
       } else {
         curr += c;
       }
-    } else if (state == STATE::SECOND) {
-      if (c == '\r') {
-        headerData.second = curr;
-        headers.insert(headerData);
+    } else if (state == STATE::HEADER_VALUE) {
+      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
+        headers[headerName] = curr;
         curr = "";
-        state = STATE::FIRST;
-        i++;
+        i++; // Skip the \n
+        state = STATE::HEADER_NAME;
       } else {
         curr += c;
       }
-    } else if (state == STATE::DATA) {
-      // No need to check anything else since this will terminate after the
-      // request body is over
-      curr += c;
+    } else if (state == STATE::BODY) {
+      data += c;
     }
-  }
-  data = curr;
-  // Since there will be a \n at the end of checking (O(1) time efficiency)
-  if (!data.empty()) {
-    data.pop_back();
   }
 
   writeToFile("output.txt", bufferStr);
@@ -245,22 +272,20 @@ void Server::handleClient(int client_fd) {
 
   unordered_map<string, string> extra;
   HttpRequest req = {httpMethod, url, protocol, headers, data, extra};
-  try
-  {
+  try {
     string response = this->handleRequest(req);
-    // send(sockfd, buf, len, flags);
-    // buf is the response
-    // len is in bytes
-    // flags is ???
-    // see the notes.md file
     send(client_fd, response.c_str(), response.length(), 0);
     close(client_fd);
   } catch (const exception& e) {
     cerr << "Error " << e.what() << '\n';
+    string response = sendString("500 Internal Server Error", "An error occurred while handling the request");
+    send(client_fd, response.c_str(), response.length(), 0);
+    close(client_fd);
   } catch (...) {
     cerr << "Serious error trying to handle request\n";
-    string response = sendString("404 Not Found", "An error occurred while handling the request");
+    string response = sendString("500 Internal Server Error", "An error occurred while handling the request");
     send(client_fd, response.c_str(), response.length(), 0);
+    close(client_fd);
   }
 }
 
@@ -350,10 +375,20 @@ Content-Type: application/pdf
 ------WebKitFormBoundaryX--
 */
 
-// Help of AI
+
 string Response::toString() const {
   string response = "HTTP/1.1 " + status + "\r\n";
   response += "Content-Type: " + contentType + "\r\n";
+
+  // Implement CORS
+  if (!Global::serverOrigin.empty()) {
+    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
+    response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
+    response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+    response.append("Access-Control-Allow-Credentials: true\r\n");
+  }
+
+  response += "Connection: close\r\n";
   response += "Content-Length: " + to_string(body.length()) + "\r\n\r\n";
   response += body;
   return response;
@@ -364,6 +399,7 @@ string sendString(const string &status, const string &body) {
   string response = "HTTP/1.1 " + status + "\r\n";
   response.append("Content-Type: application/json\r\n");
 
+  // Implement CORS
   if (!Global::serverOrigin.empty()) {
     response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
     response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
