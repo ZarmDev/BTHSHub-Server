@@ -20,11 +20,6 @@ enum class AccessLevel {
 };
 
 bool protectRoute(HttpRequest &req, AccessLevel level) {
-  // Always allow OPTIONS for CORS preflight
-  if (req.method == "OPTIONS") {
-    return true;
-  }
-  
   // Check for Authorization header
   auto it = req.headers.find("Authorization");
   if (it == req.headers.end()) {
@@ -81,11 +76,9 @@ bool protectModeratorOrAdmin(HttpRequest &req) {
 bool protectTeamMember(HttpRequest &req) {
   const string userID = getValueFromMiddleware(req, "userID");
   const string username = UserDB::getUsernameFromUserId(userID);
-  cout << userID << " " << username << "" << req.data << '\n';
   if (TeamDB::userIsOnTeam(req.data, username) || UserDB::isUserAdmin(userID)) {
     OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
     if (teamID) {
-      cout << "teamID found " << teamID.value() << '\n';
       req.extra["teamID"] = teamID.value();
     }
     return true;

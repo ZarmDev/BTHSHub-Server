@@ -83,7 +83,7 @@ print(response.text)
 url = "http://localhost:4221/api/getteaminfo"
 data = "FRC 334"
 
-response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/api/getallteams"
@@ -122,7 +122,7 @@ print(response.text)
 url = "http://localhost:4221/api/getannoucements"
 data = "FRC 334"
 
-response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/mod/addotherusertoteam"
@@ -134,7 +134,7 @@ print(response.text)
 url = "http://localhost:4221/api/getteaminfo"
 data = "FRC 334"
 
-response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+response = requests.post(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
 url = "http://localhost:4221/api/getteammembers"

@@ -18,7 +18,6 @@ teamname\n
 iftheteamisprivate (0 for false, 1 for true)
 */
 string createTeamRoute(HttpRequest &req) {
-  cout << req.data << '\n';
   vector<string> parsed = split(req.data, "\n");
   const string teamName = parsed.at(0);
   cout << "Creating " << teamName << "...\n";
@@ -56,6 +55,9 @@ string createTeamAnnoucement(HttpRequest &req) {
     return sendString("404 Not Found", teamName + " does not exist!");
   }
   const string content = j["content"];
+  if (content.empty()) {
+    return sendString("404 Not Found", "Content cannot be empty!");
+  }
   vector<string> mentions = j["mentions"].get<vector<string>>();
   const string userID = getValueFromMiddleware(req, "userID");
   // Make sure user is on the team
@@ -65,7 +67,6 @@ string createTeamAnnoucement(HttpRequest &req) {
     return sendString("200 OK", "Announcement created successfully");
   }
   return sendString("404 Not Found", "User is not a member of " + teamName + "!");
-
 }
 
 /*
@@ -177,7 +178,6 @@ string setDailyAnnoucement(HttpRequest &req) {
 
 // Receive the data as binary and ensure client has header of 'Content-Type': 'multipart/form-data',
 string uploadSchedule(HttpRequest &req) {
-  cout << req.data << '\n';
   return "";
   // TODO: Set the maximum amount of characters a client can send. Fix lib.cpp to somehow be able to change the amount it reads
   // Remember to check the file size because if it's too big they clearly are slowing down the server
@@ -192,7 +192,6 @@ teamname
 string getTeamInfo(HttpRequest &req) {
   // Only give the team information if you are on the team
   const string teamID = getValueFromMiddleware(req, "teamID");
-  cout << teamID << '\n';
   nlohmann::json j = TeamDB::getTeamInfo(teamID);
   return sendString("200 OK", j.dump());
 }
@@ -233,8 +232,11 @@ string getUserTeams(HttpRequest &req) {
 Expect req.data to be:
 */
 string getPermissionLevel(HttpRequest &req) {
-  const string& permissionLevel = UserDB::getPermissionLevel(getValueFromMiddleware(req, "userID"));
-  return sendString("200 OK", permissionLevel);
+  OptionalString permissionLevel = UserDB::getPermissionLevel(getValueFromMiddleware(req, "userID"));
+  if (!permissionLevel) {
+    return sendString("404 Not Found", "Unable to get user's permission level...");
+  }
+  return sendString("200 OK", permissionLevel.value());
 }
 
 /*

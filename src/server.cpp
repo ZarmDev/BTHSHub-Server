@@ -120,9 +120,9 @@ int main(int argc, char **argv) {
   server.get("/api/getteamcoaches", getTeamCoaches);
   server.get("/api/getmyteams", getUserTeams);
   server.post("/api/createannoucement", createTeamAnnoucement);
-  server.get("/api/getannoucements", getTeamAnnoucements);
+  server.post("/api/getannoucements", getTeamAnnoucements);
   server.post("/api/addusertoteam", addUserToTeam);
-  server.get("/api/getteaminfo", getTeamInfo);
+  server.post("/api/getteaminfo", getTeamInfo);
 
   server.use(protectModeratorOrAdmin);
   // protected only for moderators (coaches, club execs) or admins. sends userID in req.extra

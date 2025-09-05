@@ -327,6 +327,10 @@ void Server::updateRouteMap(const string& route) {
 
 string Server::handleRequest(HttpRequest &req) {
   const string errorMsg = req.url + " not found!";
+  // Always allow OPTIONS for CORS preflight
+  if (req.method == "OPTIONS") {
+    return sendString("200 OK", "");;
+  }
   // First, handle middleware. This should be efficient because it's just a .find() call which is usually O(1)
   auto it = middlewareRoutesMap.find(req.url);
   if (it != middlewareRoutesMap.end()) {

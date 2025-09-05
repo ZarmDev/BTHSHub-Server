@@ -68,7 +68,7 @@ sudo pacman -S libsodium
 ```
 ### Follow steps in "First time" and then "Development"
 
-# First time (development)
+# First time
 1. Ensure you have Cmake extension in Vscode or run cmake in the CLI
 2. Run ```openssl rand -hex 32``` in order to get a private key. Set it to JWT_SECRET in .env
 3. Optionally add an admin password if you are creating an admin account
@@ -76,7 +76,7 @@ sudo pacman -S libsodium
 JWT_SECRET=xxx
 ADMINPASS=xxx
 ```
-4. Add your vcpkg root to CMakePresets.json at "CMAKE_TOOLCHAIN_FILE"
+4. Add the path to your vcpkg root to CMakePresets.json at "CMAKE_TOOLCHAIN_FILE". There is already a value there so just replace it.
 # Development
 1. Run the redis server
 ```
@@ -100,12 +100,14 @@ For more ideas, see ideas.md
 ✅ The website will be made in C++ to be extremely fast and reliable
 ✅ User authentication with JWT Tokens
 ✅ Add team creation
+✅ Private or public teams
 ✅ Add yourself or others to teams (if you own the team or are admin)
 ✅ Add ability to post annoucements
 ✅ Add way to get all annoucements
-❌ Add admins/moderators like teachers, club execs who can delete their own teams
+✅ Add admins and moderator permissions/roles
+✅ Admin panel
+✅ Add error handling, meaning the server will always run unless a severe error occurs
 ❌ Add rate limiting
-❔ Add error handling (to make sure server works if a function fails)
 
 ## Future: (AFTER APP IS MADE!)
 ❌ Implement club credit system and club directory
@@ -115,6 +117,7 @@ For more ideas, see ideas.md
 ❌ Storing schedules and being able to get other user's schedule (if they are friends)
 ❌ Ability to delete your own account
 ❌ Delete and edit annoucements
+❌ More team actions like deletion or removing users from teams
 
 ## Common errors
 ### Illegal instruction        (core dumped)

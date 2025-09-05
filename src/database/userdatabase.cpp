@@ -4,6 +4,7 @@
 #include "pdf.h"
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <sw/redis++/utils.h>
 
 #define redis Global::db
 
@@ -127,7 +128,6 @@ void printUserHash(const string& user_id) {
 string handleLogin(const string &username, const string &password) {
   // printContainer(users);
   // printAllRedisKeys();
-  // cout << password << '\n';
 
   const string user_key = "username:" + username;
 
@@ -159,8 +159,9 @@ bool isUserAdmin(const string& userID) {
   return false;
 }
 
-  const string& getPermissionLevel(const string& userID)
+OptionalString getPermissionLevel(const string& userID)
 {
-  return redis.hget("user:" + userID, "adminLevel").value();
+  OptionalString adminLevel = redis.hget("user:" + userID, "adminLevel");
+  return adminLevel;
 }
 } // namespace UserDB

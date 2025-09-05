@@ -110,7 +110,7 @@ string trim(const string &str) {
 const string getValueFromMiddleware(HttpRequest &req, const string& value) {
   auto it = req.extra.find(value);
   if (it == req.extra.end()) {
-    cerr << "No value found! Something is not right here.\n";
+    cerr << "Could not locate \"" << value << "\"\n";
     return "";
   }
   const string& found = it->second;
