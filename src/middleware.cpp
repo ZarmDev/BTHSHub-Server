@@ -23,7 +23,11 @@ bool protectRoute(HttpRequest &req, AccessLevel level) {
   // Check for Authorization header
   auto it = req.headers.find("Authorization");
   if (it == req.headers.end()) {
-    return false; // Header not found
+    // Not sure why but this happens sometimes in Node.js
+    it = req.headers.find("authorization");
+    if (it == req.headers.end()) {
+      return false; // Header not found
+    }
   }
   
   const string& authHeader = it->second;
@@ -74,13 +78,16 @@ bool protectModeratorOrAdmin(HttpRequest &req) {
 }
 
 bool protectTeamMember(HttpRequest &req) {
+  cout << "protectTeamMember\n";
   const string userID = getValueFromMiddleware(req, "userID");
   const string username = UserDB::getUsernameFromUserId(userID);
+  cout << TeamDB::userIsOnTeam(req.data, username) << '\n';
   if (TeamDB::userIsOnTeam(req.data, username) || UserDB::isUserAdmin(userID)) {
     OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
     if (teamID) {
       req.extra["teamID"] = teamID.value();
     }
+    cout << "protectTeamMember success!\n";
     return true;
   } else {
     return false;

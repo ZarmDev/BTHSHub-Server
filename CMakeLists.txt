@@ -84,6 +84,7 @@ target_link_libraries(pdf_objs PRIVATE
 
 target_link_libraries(utils_objs PRIVATE 
   project_options
+  redis++::redis++_static
 )
 
 target_link_libraries(routes_objs PRIVATE 

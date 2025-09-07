@@ -24,3 +24,5 @@ string getUserTeams(HttpRequest &req);
 string getPermissionLevel(HttpRequest &req);
 string getTeamMembers(HttpRequest &req);
 string getTeamCoaches(HttpRequest &req);
+string uploadPDF(HttpRequest &req);
+string getSchedule(HttpRequest &req);

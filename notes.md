@@ -8,3 +8,5 @@ curl -X POST -d "username\npassword" localhost:4221/login
 redis-cli FLUSHALL
 # Start http server
 python -m http.server 8080
+# Get IP for app testing
+ip addr show

@@ -1,13 +1,14 @@
+#include "utils.h"
+#include "global.h"
+#include "lib.h"
 #include <cstring>
 #include <fstream>
+#include <iostream>
 #include <ostream>
 #include <sstream>
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include <iostream>
-#include "global.h"
-#include "lib.h"
 
 #define redis Global::db
 
@@ -107,12 +108,77 @@ string trim(const string &str) {
 //   }
 // }
 
-const string getValueFromMiddleware(HttpRequest &req, const string& value) {
+const string getValueFromMiddleware(HttpRequest &req, const string &value) {
   auto it = req.extra.find(value);
   if (it == req.extra.end()) {
     cerr << "Could not locate \"" << value << "\"\n";
     return "";
   }
-  const string& found = it->second;
+  const string &found = it->second;
   return found;
+}
+
+// Generated with AI
+optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
+  // Check if it's multipart/form-data
+  auto it = req.headers.find("Content-Type");
+  if (it == req.headers.end() ||
+      it->second.find("multipart/form-data") == string::npos) {
+    return nullopt;
+  }
+
+  // Get boundary
+  string contentType = it->second;
+  size_t pos = contentType.find("boundary=");
+  if (pos == string::npos)
+    return nullopt;
+
+  string boundary = "--" + contentType.substr(pos + 9);
+
+  // Find PDF content in the multipart data
+  pos = req.data.find(boundary);
+  if (pos == string::npos)
+    return nullopt;
+
+  // Find content disposition header
+  pos = req.data.find("Content-Disposition:", pos);
+  if (pos == string::npos)
+    return nullopt;
+
+  // Get filename
+  pos = req.data.find("filename=\"", pos);
+  if (pos == string::npos)
+    return nullopt;
+
+  pos += 10; // Skip "filename=\""
+  size_t end_pos = req.data.find("\"", pos);
+  string filename = req.data.substr(pos, end_pos - pos);
+
+  // Find PDF content type
+  pos = req.data.find("Content-Type:", end_pos);
+  if (pos == string::npos)
+    return nullopt;
+
+  pos += 13;                                  // Skip "Content-Type:"
+  pos = req.data.find_first_not_of(" ", pos); // Skip whitespace
+  end_pos = req.data.find("\r\n", pos);
+  string content_type = req.data.substr(pos, end_pos - pos);
+
+  // Find actual PDF data
+  pos = req.data.find("\r\n\r\n", end_pos);
+  if (pos == string::npos)
+    return nullopt;
+  pos += 4; // Skip "\r\n\r\n"
+
+  // Find end of data (next boundary)
+  end_pos = req.data.find(boundary, pos);
+  if (end_pos == string::npos)
+    return nullopt;
+  end_pos -= 2; // Account for \r\n before boundary
+
+  // Extract the PDF data
+  vector<unsigned char> pdf_data(req.data.begin() + pos,
+                                 req.data.begin() + end_pos);
+
+  return UploadedFile{filename, content_type, pdf_data};
 }

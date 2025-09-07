@@ -143,6 +143,55 @@ data = "FRC 334"
 response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
 print(response.text)
 
+def upload_pdf_test():
+    print("\n--- Testing PDF Upload ---")
+    
+    # URL for PDF upload endpoint
+    url = "http://localhost:4221/api/uploadpdf"
+
+    # Get the directory of the current script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Construct the relative path to the PDF file
+    pdf_path = os.path.join(script_dir, "ProgramCard.pdf")
+    
+    try:
+        # Open the PDF file in binary mode
+        with open(pdf_path, 'rb') as pdf_file:
+            # Create the multipart/form-data request with the PDF file
+            files = {'file': (os.path.basename(pdf_path), pdf_file, 'application/pdf')}
+            
+            # Send the request with authentication token
+            response = requests.post(
+                url, 
+                files=files,
+                headers={"Authorization": adminToken}  # Use the admin token for authorization
+            )
+            
+            # Print the response status and content
+            print(f"Status Code: {response.status_code}")
+            print(f"Response: {response.text}")
+            
+            # Check if upload was successful
+            if response.status_code == 200:
+                print("PDF uploaded successfully!")
+            else:
+                print(f"PDF upload failed with status {response.status_code}")
+                
+    except FileNotFoundError:
+        print(f"Error: PDF file not found at {pdf_path}")
+    except Exception as e:
+        print(f"Error uploading PDF: {str(e)}")
+
+# Add this to the end of your test script
+upload_pdf_test()
+
+url = "http://localhost:4221/api/getschedule"
+data = ""
+
+response = requests.get(url, data=data, headers={"Authorization": adminToken, "Content-Type": "text/plain"})
+print(response.text)
+
 # url = "http://localhost:4221/uploadschedule"
 # pdf_path = '../src/ProgramCard.pdf'
 

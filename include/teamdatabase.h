@@ -18,12 +18,13 @@ namespace TeamDB {
     bool teamExistsByName(const string& team_name);
     int getNumOfAnnoucements(string& teamName);
     nlohmann::json getRangeOfAnnoucements(const string& teamName, int start, int end);
-    void postAnnoucement(const string& teamName, const string& content, const string& userIDOwner, vector<string> mentions);
+    void postAnnoucement(const string& teamName, const string& content, const string& owner, vector<string> mentions);
     OptionalString getTeamIDFromName(const string& teamName);
-    bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPrivate);
+    bool addUserToTeam(const string& user_id, const string& team_id);
     bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInvitedID, const string& team_id);
     bool userIsOnTeam(const string& teamName, const string& username);
     unordered_set<string> getUserTeams(const string& userID);
     unordered_set<string> getTeamMembers(const string& teamID);
     unordered_set<string> getTeamOwners(const string& teamID);
+    OptionalString getTeamNameFromID(const string& teamID);
 };

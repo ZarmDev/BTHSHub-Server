@@ -57,6 +57,15 @@ You may have to enable it as system service (personally, I didn't have to)
 sudo systemctl enable redis-server
 sudo systemctl start redis-server
 ```
+### Install redis-plus-plus seperately
+```
+git clone https://github.com/sewenew/redis-plus-plus.git
+cd redis-plus-plus
+mkdir build && cd build
+cmake ..
+make
+sudo make install
+```
 ### Install libsodium
 > Debian based
 ```

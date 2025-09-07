@@ -3,12 +3,15 @@
 #include "pdf.h"
 #include "teamdatabase.h"
 #include "userdatabase.h"
+#include "scheduledatabase.h"
 #include "utils.h"
 #include <iostream>
 #include <sodium.h>
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <filesystem>
+#include <fstream>
 
 using namespace std;
 
@@ -42,6 +45,8 @@ string createTeamRoute(HttpRequest &req) {
   return sendString("200 OK", "Team " + parsed.at(0) + " successfully created!");
 }
 
+/*Expect req.data to be:
+*/
 // Using JSON here because it's much more convenient/readable in this case
 string createTeamAnnoucement(HttpRequest &req) {
   // Parse the JSON string from req.data
@@ -60,13 +65,8 @@ string createTeamAnnoucement(HttpRequest &req) {
   }
   vector<string> mentions = j["mentions"].get<vector<string>>();
   const string userID = getValueFromMiddleware(req, "userID");
-  // Make sure user is on the team
-  if (TeamDB::userIsOnTeam(teamName, UserDB::getUsernameFromUserId(userID)) || UserDB::isUserAdmin(userID))
-  {
-    TeamDB::postAnnoucement(teamName, content, userID, mentions);
-    return sendString("200 OK", "Announcement created successfully");
-  }
-  return sendString("404 Not Found", "User is not a member of " + teamName + "!");
+  TeamDB::postAnnoucement(teamName, content, UserDB::getUsernameFromUserId(userID), mentions);
+  return sendString("200 OK", "Announcement created successfully");
 }
 
 /*
@@ -75,15 +75,11 @@ teamName
 */
 string getTeamAnnoucements(HttpRequest &req) {
   const string userID = getValueFromMiddleware(req, "userID");
-  if (TeamDB::userIsOnTeam(req.data, UserDB::getUsernameFromUserId(userID)) || UserDB::isUserAdmin(userID))
-  {
-    int numOfAnnoucements = TeamDB::getNumOfAnnoucements(req.data);
-    int past50 = (numOfAnnoucements - 50);
-    // Get the past 50 unless there is less than 50, then just get all of them
-    nlohmann::json annoucements = TeamDB::getRangeOfAnnoucements(req.data, past50 > 0 ? past50 : 0, numOfAnnoucements);
-    return sendString("200 OK", annoucements.dump());
-  }
-  return sendString("404 Not Found", "User is not a member of " + req.data + "!");
+  int numOfAnnoucements = TeamDB::getNumOfAnnoucements(req.data);
+  int past20 = (numOfAnnoucements - 20);
+  // Get the past 20 unless there is less than 20, then just get all of them
+  nlohmann::json annoucements = TeamDB::getRangeOfAnnoucements(req.data, past20 > 0 ? past20 : 0, numOfAnnoucements);
+  return sendString("200 OK", annoucements.dump());
 }
 
 /*
@@ -92,8 +88,14 @@ teamname
 */
 string addUserToTeam(HttpRequest &req) {
   const string userID = getValueFromMiddleware(req, "userID");
-  const string teamID = getValueFromMiddleware(req, "teamID");
-  bool addToTeam = TeamDB::addUserToTeam(userID, teamID, false);
+  if (TeamDB::userIsOnTeam(req.data, UserDB::getUsernameFromUserId(userID))) {
+    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+  }
+  OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
+  if (!teamID) {
+    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+  }
+  bool addToTeam = TeamDB::addUserToTeam(userID, teamID.value());
   if (addToTeam) {
     return sendString("200 OK", "Added user to " + req.data);
   } else {
@@ -109,12 +111,16 @@ usertoadd (in username form)
 string addOtherUserToTeam(HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
   const string teamName = parsed.at(0);
+  const string username = parsed.at(1);
   OptionalString teamID = TeamDB::getTeamIDFromName(teamName);
   if (!teamID) {
     return sendString("404 Not Found", "Your team ID is invalid");
   }
+  if (TeamDB::userIsOnTeam(teamName, username)) {
+    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+  }
   const string userInviting = getValueFromMiddleware(req, "userID");
-  const string userBeingInvited = UserDB::getUserIdByUsername(parsed.at(1));
+  const string userBeingInvited = UserDB::getUserIdByUsername(username);
   cout << userInviting << " is inviting " << userBeingInvited << " to " << teamName << '\n';
   bool addToTeam = TeamDB::addOtherUserToTeam(userInviting, userBeingInvited, teamID.value());
   if (addToTeam) {
@@ -130,7 +136,8 @@ string createUserRoute(HttpRequest &req) {
     printContainer(parsed);
     const string createUserAttempt =
         UserDB::createUser(parsed.at(0), parsed.at(1), parsed.at(2));
-    return sendString("200 OK", createUserAttempt);
+    const bool isError = createUserAttempt.starts_with("Error");
+    return sendString(isError ? "404 Not Found" : "200 OK", createUserAttempt);
   } catch (const std::exception &e) {
     cerr << "Error at createUserRoute: " << e.what() << endl;
     return sendString("404 Not Found", "An error occured on our side");
@@ -257,4 +264,71 @@ string getTeamCoaches(HttpRequest &req) {
   unordered_set<string> teamOwners = TeamDB::getTeamOwners(getValueFromMiddleware(req, "teamID"));
   nlohmann::json j = teamOwners;
   return sendString("404 Not Found", j.dump());
+}
+
+/*
+Expect req.data to be:
+TODO: fill this out
+*/
+string updateUserLogo(HttpRequest &req) {
+  auto pdf = extractPdfFromRequest(req);
+    if (!pdf) {
+        return sendString("400 Bad Request", "{\"error\":\"Invalid PDF upload\"}");
+    }
+    
+    // Validate file type
+    if (pdf->content_type != "application/pdf") {
+        return sendString("400 Bad Request", "{\"error\":\"File must be a PDF\"}");
+    }
+    
+    // Before saving the file
+    if (!filesystem::exists("uploads")) {
+      filesystem::create_directory("uploads");
+    }
+
+    // Save PDF to disk
+    string filename = "uploads/" + pdf->filename;
+    ofstream outfile(filename, ios::binary);
+    outfile.write((char*)pdf->data.data(), pdf->data.size());
+    outfile.close();
+    
+    return sendString("200 OK", "{\"success\":true,\"filename\":\"" + pdf->filename + "\"}");
+}
+
+/*
+Expect req.data to be:
+TODO: FILL THIS OUT
+*/
+// Usage of AI/me
+string uploadPDF(HttpRequest &req) {
+  auto pdf = extractPdfFromRequest(req);
+    if (!pdf) {
+        return sendString("400 Bad Request", "{\"error\":\"Invalid PDF upload\"}");
+    }
+    
+    // Validate file type
+    if (pdf->content_type != "application/pdf") {
+        return sendString("400 Bad Request", "{\"error\":\"File must be a PDF\"}");
+    }
+    
+    // Process PDF directly from memory
+    string extractedText = PDF::getPDFText(pdf->data);
+    
+    vector<Day> schedule = PDF::parseSchedule(extractedText);
+
+    ScheduleDB::storeScheduleInRedis(schedule, getValueFromMiddleware(req, "userID"));
+    
+    return sendString("200 OK", "Uploaded schedule successfully.");
+}
+
+/*
+Expect req.data to be:
+*/
+string getSchedule(HttpRequest &req) {
+  OptionalString j = ScheduleDB::getSchedule(getValueFromMiddleware(req, "userID"));
+  if (j) {
+    return sendString("200 OK", j.value());
+  } else {
+    return sendString("404 Not Found", "");
+  }
 }

@@ -6,6 +6,12 @@
 #include "lib.h"
 using namespace std;
 
+struct UploadedFile {
+  string filename;
+  string content_type;
+  vector<unsigned char> data;
+};
+
 string readFile(const string &path);
 void writeToFile(const string &path, const string &data);
 vector<string> split(string str,string sep);
@@ -13,6 +19,7 @@ void printAllRedisKeys();
 string removeWhitespace(const string& str);
 string trim(const string& str);
 const string getValueFromMiddleware(HttpRequest &req, const string& value);
+optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req);
 
 // void printSet(unordered_set<string> const &s);
 // void printMap(const unordered_map<string, string>& m);

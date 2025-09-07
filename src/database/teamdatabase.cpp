@@ -56,8 +56,13 @@ bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   // Add user to team's member set
   redis.sadd(team_members_key, UserDB::getUsernameFromUserId(user_id));
 
+  OptionalString teamName = TeamDB::getTeamNameFromID(team_id);
+  
+  if (!teamName) {
+    return false;
+  }
   // Add team to user's team set
-  redis.sadd(user_teams_key, team_id);
+  redis.sadd(user_teams_key, teamName.value());
 
   // Optionally, track join time
   double now = time(nullptr);
@@ -76,18 +81,17 @@ bool addOwnerToTeamHelper(const string& userID, const string& teamID) {
 
 // HELP OF AI
 namespace TeamDB {
-bool addUserToTeam(const string& user_id, const string& team_id, bool bypassPrivate) {
+bool addUserToTeam(const string& user_id, const string& team_id) {
   string team_key = "team:" + team_id;
   // First, check the level of permission the user has. A user can only add themselves to private teams if they are an admin
   string adminLevel = *redis.hget("user:" + user_id, "adminLevel");
 
-  if (adminLevel != "2") {
-    return false;
-  }
-  // Second, make sure that the team is public, if not you must be invited
+  // Second, make sure that the team is public, if not you must be invited or an admin
   string isPrivate = *redis.hget(team_key, "private");
-  if (isPrivate == "true" && !bypassPrivate) {
-    return false;
+  if (isPrivate == "true") {
+    if (adminLevel != "2") {
+      return false;
+    }
   }
 
   addUserToTeamHelper(user_id, team_id);
@@ -212,6 +216,10 @@ unordered_map<string, string> getTeamInfo(const string& teamId) {
   return hash;
 }
 
+OptionalString getTeamNameFromID(const string& teamID) {
+  return redis.hget("team:" + teamID, "name");
+}
+
 OptionalString getTeamIDFromName(const string& teamName) {
   return redis.get("teamname:" + teamName);
 }
@@ -226,13 +234,13 @@ content: content in markdown form
 userIDOwner: the owner of the annoucement (the corresponding user ID)
 mentions: an array of the people who are mentioned in the post (get notifications). If empty, it's assumed that it's a default annoucement where EVERYONE will be notified
 */
-void postAnnoucement(const string& teamName, const string& content, const string& userIDOwner, vector<string> mentions) {
+void postAnnoucement(const string& teamName, const string& content, const string& owner, vector<string> mentions) {
   lock_guard<mutex> lock(Global::redisMutex); // Lock during Redis operations
   
   const string teamKey = teamName + ":annoucement";
   long long annoucement_id = redis.incr(teamKey + ":id:counter");
   unordered_map<string, string> m = {{"content", content},
-                                          {"owner", userIDOwner},
+                                          {"owner", owner},
                                      {"created_at", to_string(time(nullptr))}};
   redis.hmset(teamKey + ":" + to_string(annoucement_id), m.begin(), m.end());
   redis.sadd(teamKey + ":mentions", mentions.begin(), mentions.end());

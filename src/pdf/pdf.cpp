@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 #include <podofo/main/PdfDeclarations.h>
 #include <podofo/podofo.h>
+#include <span>
 
 using namespace PoDoFo;
 using namespace std;
@@ -232,12 +233,19 @@ string extractTextFromPage(const PdfPage &page) {
   return extractedText;
 }
 
-string getPDFText(const string &fileLocation) {
+string getPDFText(const vector<unsigned char>& pdfData) {
   try {
-    // ... existing file validation code ...
 
     PdfMemDocument doc;
-    doc.Load(fileLocation);
+    // doc.Load(fileLocation);
+    // Create a span/view over the vector data with proper type conversion
+    std::span<const char> buffer(
+        reinterpret_cast<const char*>(pdfData.data()), 
+        pdfData.size()
+    );
+    
+    // Now pass the properly typed span to LoadFromBuffer
+    doc.LoadFromBuffer(buffer);
 
     const PdfPageCollection &pages = doc.GetPages();
     std::cout << "PDF loaded successfully. Pages: " << pages.GetCount()
