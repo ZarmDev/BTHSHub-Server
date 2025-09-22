@@ -82,8 +82,8 @@ int main(int argc, char **argv) {
   }
   // Initalize server on 4221
   server.init("4221");
-  // Maximum of 250KB
-  server.setMaxCharacters(1024 * 250);
+  // Maximum of 1KB for any request by default
+  server.setDefaultMaxCharacters(1000);
   // NOT FOR PRODUCTION. Change to server url during production.
   Global::serverOrigin = "*";
 
@@ -111,11 +111,11 @@ int main(int argc, char **argv) {
   server.get("/api/getallteams", getAllTeams);
   server.get("/api/getpermissionlevel", getPermissionLevel);
   server.get("/api/getdailyannoucement", getDailyAnnoucement);
-  server.post("/api/uploadschedule", uploadSchedule);
   server.post("/api/addusertoteam", addUserToTeam);
   server.get("/api/getmyteams", getUserTeams);
   // server.post("/api/updateuserlogo", updateUserLogo);
-  server.post("/api/uploadpdf", uploadPDF);
+  // You can send a much bigger content length here (250 KB) to upload PDF
+  server.post("/api/uploadschedule", uploadPDF, 1024 * 250);
   server.get("/api/getschedule", getSchedule);
 
   // only allow real users who are also members of the team, an admin or a coach/moderator

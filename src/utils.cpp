@@ -120,44 +120,59 @@ const string getValueFromMiddleware(HttpRequest &req, const string &value) {
 
 // Generated with AI
 optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
+  writeToFile("output.txt", req.data);
   // Check if it's multipart/form-data
   auto it = req.headers.find("Content-Type");
   if (it == req.headers.end() ||
       it->second.find("multipart/form-data") == string::npos) {
+        cout << "No multipart...\n";
     return nullopt;
   }
 
   // Get boundary
   string contentType = it->second;
   size_t pos = contentType.find("boundary=");
-  if (pos == string::npos)
+  if (pos == string::npos) {
+    cout << "2\n";
     return nullopt;
+  }
 
   string boundary = "--" + contentType.substr(pos + 9);
 
   // Find PDF content in the multipart data
   pos = req.data.find(boundary);
-  if (pos == string::npos)
+  if (pos == string::npos) {
+    cout << "3\n";
     return nullopt;
+  }
 
   // Find content disposition header
   pos = req.data.find("Content-Disposition:", pos);
-  if (pos == string::npos)
-    return nullopt;
+  if (pos == string::npos) {
+    // Fallback to the lower casing (WHY JAVASCRIPT!!!!)
+    pos = req.data.find("content-disposition:");
+    if (pos == string::npos) {
+      cout << "4\n";
+      return nullopt;
+    }
+  }
 
   // Get filename
   pos = req.data.find("filename=\"", pos);
-  if (pos == string::npos)
+  if (pos == string::npos) {
+    cout << "5\n";
     return nullopt;
-
+  }
   pos += 10; // Skip "filename=\""
   size_t end_pos = req.data.find("\"", pos);
   string filename = req.data.substr(pos, end_pos - pos);
 
   // Find PDF content type
   pos = req.data.find("Content-Type:", end_pos);
-  if (pos == string::npos)
+  if (pos == string::npos) {
+    cout << "6\n";
     return nullopt;
+  }
 
   pos += 13;                                  // Skip "Content-Type:"
   pos = req.data.find_first_not_of(" ", pos); // Skip whitespace
@@ -166,8 +181,10 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
 
   // Find actual PDF data
   pos = req.data.find("\r\n\r\n", end_pos);
-  if (pos == string::npos)
+  if (pos == string::npos) {
+    cout << "8\n";
     return nullopt;
+  }
   pos += 4; // Skip "\r\n\r\n"
 
   // Find end of data (next boundary)

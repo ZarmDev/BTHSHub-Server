@@ -29,21 +29,22 @@ class Server {
 public:
   bool init(const string &port);
   bool start();
-  void get(const string &route, RequestFunc handler);
-  void post(const string &route, RequestFunc handler);
+  void get(const string &route, RequestFunc handler, int maxCharacters = -1);
+  void post(const string &route, RequestFunc handler, int maxCharacters = -1);
   void use(MiddlewareFunc func);
   void use(const vector<MiddlewareFunc> &funcs);
   string handleRequest(HttpRequest &req);
-  void setMaxCharacters(int num);
+  void setDefaultMaxCharacters(int num);
   void updateRouteMap(const string& route);
 
 private:
   int server_fd;
-  int maximumCharacters = 8192;
+  int defaultMaxCharacters = 8192;
   vector<MiddlewareFunc> currentMiddlewareRoutes;
   unordered_map<string, vector<MiddlewareFunc>> middlewareRoutesMap;
   unordered_map<string, RequestFunc> postRoutes;
   unordered_map<string, RequestFunc> getRoutes;
+  unordered_map<string, int> routeMaxCharacters;
 
   void handleClient(int client_fd);
 };

@@ -147,7 +147,7 @@ def upload_pdf_test():
     print("\n--- Testing PDF Upload ---")
     
     # URL for PDF upload endpoint
-    url = "http://localhost:4221/api/uploadpdf"
+    url = "http://localhost:4221/api/uploadschedule"
 
     # Get the directory of the current script
     script_dir = os.path.dirname(os.path.abspath(__file__))

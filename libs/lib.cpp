@@ -9,15 +9,15 @@
 #include <utility>
 #include <vector>
 // ?
-#include <unistd.h>
 #include <sys/types.h>
+#include <unistd.h>
 // Socket/linux networking
-#include "lib.h"
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
 #include "global.h"
+#include "lib.h"
 #include "utils.h"
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <sys/socket.h>
 
 using namespace std;
 
@@ -137,62 +137,8 @@ string replace_all(string str, const string &from, const string &to) {
 // I saw an example on Codecrafters doing it this way and I have to say they did
 // a good job
 void Server::handleClient(int client_fd) {
-  char buffer[maximumCharacters];
-  memset(buffer, 0, maximumCharacters);
-
-  // First read to get headers
-  int n = read(client_fd, buffer, maximumCharacters - 1);
-  if (n <= 0) {
-    cout << "ERROR reading from socket\n";
-    close(client_fd);
-    return;
-  }
-  
-  buffer[n] = '\0';
-  
-  // Parse headers to find Content-Length (created using AI after oroblems with reading a fixed length)
-  string headers_str(buffer, n);
-  size_t header_end = headers_str.find("\r\n\r\n");
-  int content_length = 0;
-  
-  if (header_end != string::npos) {
-    // Look for Content-Length header
-    size_t cl_pos = headers_str.find("Content-Length:");
-    if (cl_pos != string::npos && cl_pos < header_end) {
-      size_t cl_start = cl_pos + 15; // "Content-Length:" length
-      size_t cl_end = headers_str.find("\r\n", cl_start);
-      if (cl_end != string::npos) {
-        string cl_value = headers_str.substr(cl_start, cl_end - cl_start);
-        // Trim whitespace
-        cl_value.erase(0, cl_value.find_first_not_of(" \t"));
-        cl_value.erase(cl_value.find_last_not_of(" \t") + 1);
-        content_length = stoi(cl_value);
-      }
-    }
-    
-    // Calculate how much body data we already have
-    int headers_length = header_end + 4; // +4 for "\r\n\r\n"
-    int body_received = n - headers_length;
-    
-    // Read remaining body data if needed
-    while (body_received < content_length && n < maximumCharacters - 1) {
-      int additional = read(client_fd, buffer + n, maximumCharacters - 1 - n);
-      if (additional <= 0) break;
-      n += additional;
-      body_received += additional;
-    }
-    
-    buffer[n] = '\0';
-  }
-
-  string bufferStr(buffer, n);
-  
-  if (n >= maximumCharacters - 1) {
-    cout << "Request too large, dropping connection\n";
-    close(client_fd);
-    return;
-  }
-
+  const int CHUNK_SIZE = 8192; // 8 KB chunks
+  char buffer[CHUNK_SIZE];
   // Parse the HTTP request (Not created by AI, created by me)
   string curr;
   string httpMethod;
@@ -200,75 +146,134 @@ void Server::handleClient(int client_fd) {
   string protocol;
   string data;
   unordered_map<string, string> headers;
-  enum STATE { TYPE, URL, PROTO, HEADER_NAME, HEADER_VALUE, BODY };
+  enum STATE { TYPE, URL, PROTO, FIRST, SECOND, DATA };
   STATE state = STATE::TYPE;
-  string headerName;
-  
-  for (int i = 0; i < n; ++i) {
-    char c = buffer[i];
-    
-    if (state == STATE::TYPE) {
-      if (c == ' ') {
-        httpMethod = curr;
-        curr = "";
-        state = STATE::URL;
-      } else {
-        curr += c;
-      }
-    } else if (state == STATE::URL) {
-      if (c == ' ') {
-        url = curr;
-        curr = "";
-        state = STATE::PROTO;
-      } else {
-        curr += c;
-      }
-    } else if (state == STATE::PROTO) {
-      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
-        protocol = curr;
-        curr = "";
-        i++; // Skip the \n
-        state = STATE::HEADER_NAME;
-      } else {
-        curr += c;
-      }
-    } else if (state == STATE::HEADER_NAME) {
-      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
-        // Empty line means end of headers
-        i++; // Skip the \n
-        state = STATE::BODY;
-      } else if (c == ':') {
-        headerName = curr;
-        curr = "";
-        state = STATE::HEADER_VALUE;
-        // Skip the space after colon if present
-        if (i + 1 < n && buffer[i + 1] == ' ') {
-          i++;
+  pair<string, string> headerData;
+  bool shouldContinue = true;
+  int totalChars = 0;
+  int contentLengthHeader = 0;
+  int bodyBytes = 0;
+
+  while (shouldContinue) {
+    int bytes_received = recv(client_fd, buffer, CHUNK_SIZE, 0);
+    if (bytes_received == 0) {
+      break;
+    } else if (bytes_received == -1) {
+      close(client_fd);
+      return;
+    }
+    for (int i = 0; i < bytes_received; i++) {
+      char c = buffer[i];
+      if (state == STATE::TYPE) {
+        if (c == ' ') {
+          httpMethod = curr;
+          curr = "";
+          state = STATE::URL;
+        } else {
+          curr += c;
         }
-      } else {
+      } else if (state == STATE::URL) {
+        if (c == ' ') {
+          url = curr;
+          curr = "";
+          state = STATE::PROTO;
+        } else {
+          curr += c;
+        }
+      } else if (state == STATE::PROTO) {
+        if (c == '\r') {
+          protocol = curr;
+          curr = "";
+          i++;
+          state = STATE::FIRST;
+        } else {
+          curr += c;
+        }
+      } else if (state == STATE::FIRST) {
+        if (c == '\r') {
+          curr = "";
+          state = STATE::DATA;
+          // THIS IS THE CHECKS BEFORE IT READS THE BODY
+          if (httpMethod == "GET") {
+            shouldContinue = false;
+            break;
+          }
+          // Find content-length header
+          auto it = headers.find("Content-Length");
+          if (it != headers.end()) {
+            contentLengthHeader = stoi(it->second);
+          }
+          // This does add an extra .find() call but we need it for max character checks on specfiic urls
+          auto it2 = routeMaxCharacters.find(url);
+          if (it2 != routeMaxCharacters.end()) {
+            // Check if body is too long based on specified max characters
+            if (contentLengthHeader > it2->second) {
+              cout << "body too long based on given max characters!\n";
+              close(client_fd);
+              return;
+            }
+          } else {
+            // Check if body is too long based on defaultMaxCharacters
+            if (contentLengthHeader > defaultMaxCharacters) {
+              cout << "body too long!\n";
+              close(client_fd);
+              return;
+            }
+          }
+        } else if (c == ':') {
+          headerData.first = curr;
+          curr = "";
+          state = STATE::SECOND;
+          i++;
+        } else {
+          curr += c;
+        }
+      } else if (state == STATE::SECOND) {
+        if (c == '\r') {
+          headerData.second = curr;
+          headers.insert(headerData);
+          curr = "";
+          state = STATE::FIRST;
+          i++;
+        } else {
+          curr += c;
+        }
+      } else if (state == STATE::DATA) {
         curr += c;
+        bodyBytes++;
+        // May seem like it can create an infinite loop but there is a check in
+        // place if too many characters are read
+        if (bodyBytes > contentLengthHeader) {
+          shouldContinue = false;
+          break;
+        }
       }
-    } else if (state == STATE::HEADER_VALUE) {
-      if (c == '\r' && i + 1 < n && buffer[i + 1] == '\n') {
-        headers[headerName] = curr;
-        curr = "";
-        i++; // Skip the \n
-        state = STATE::HEADER_NAME;
-      } else {
-        curr += c;
-      }
-    } else if (state == STATE::BODY) {
-      data += c;
+    }
+    data = curr;
+    totalChars += bytes_received;
+    // Just as a precaution, headers shouldn't be longer than 400 characters 90% of the time. So we will reject those because otherwise they could just spam header data
+    if (state != STATE::DATA && totalChars > 400) {
+      cout << "Read too many chars\n";
+      cout << "Request:\n";
+      cout << buffer;
+      close(client_fd);
+      return;
     }
   }
 
-  writeToFile("output.txt", bufferStr);
+  // if (n >= maximumCharacters - 1) {
+  //   cout << "Request too large, dropping connection\n";
+  //   close(client_fd);
+  //   return;
+  // }
 
   cout << "INFO: Request to " << url << '\n';
   cout << httpMethod << " " << protocol << '\n';
   for (const auto &pair : headers) {
     cout << "[" << pair.first << "] = [" << pair.second << "]\n";
   }
+  // cout << "Data:\n";
+  // cout << data << '\n';
 
   unordered_map<string, string> extra;
   HttpRequest req = {httpMethod, url, protocol, headers, data, extra};
@@ -276,22 +281,24 @@ void Server::handleClient(int client_fd) {
     string response = this->handleRequest(req);
     send(client_fd, response.c_str(), response.length(), 0);
     close(client_fd);
-  } catch (const exception& e) {
+  } catch (const exception &e) {
     cerr << "Error " << e.what() << '\n';
-    string response = sendString("500 Internal Server Error", "An error occurred while handling the request");
+    string response =
+        sendString("500 Internal Server Error",
+                   "An error occurred while handling the request");
     send(client_fd, response.c_str(), response.length(), 0);
     close(client_fd);
   } catch (...) {
     cerr << "Serious error trying to handle request\n";
-    string response = sendString("500 Internal Server Error", "An error occurred while handling the request");
+    string response =
+        sendString("500 Internal Server Error",
+                   "An error occurred while handling the request");
     send(client_fd, response.c_str(), response.length(), 0);
     close(client_fd);
   }
 }
 
-void Server::setMaxCharacters(int num) {
-  maximumCharacters = num;
-}
+void Server::setDefaultMaxCharacters(int num) { defaultMaxCharacters = num; }
 
 void Server::use(MiddlewareFunc func) {
   currentMiddlewareRoutes = vector<MiddlewareFunc>{func};
@@ -301,27 +308,51 @@ void Server::use(const vector<MiddlewareFunc> &funcs) {
   currentMiddlewareRoutes = funcs;
 }
 
-void Server::get(const string &route, RequestFunc handler) {
+void Server::get(const string &route, RequestFunc handler, int maxCharacters) {
   getRoutes[route] = handler;
+  /* If this exists in the map, tell developer not to do this for more performance gain
+  The reason is because we don't want to create more maps and more .find() calls for GET, POST and all the methods
+  This check also does not matter in performance because this is when the server is SETTING UP not actually responding to calls*/
+  if (routeMaxCharacters.find(route) != routeMaxCharacters.end()) {
+    cerr << "Please do not use the same url for both a GET and POST. It will help the server run faster and you will run into some issues if you do not change this!\n";
+  }
+  // If not specified, use default max characters
+  if (maxCharacters == -1) {
+    routeMaxCharacters[route] = defaultMaxCharacters;
+  } else {
+    routeMaxCharacters[route] = maxCharacters;
+  }
   updateRouteMap(route);
 }
 
-void Server::post(const string &route, RequestFunc handler) {
+void Server::post(const string &route, RequestFunc handler, int maxCharacters) {
   postRoutes[route] = handler;
+  /* If this exists in the map, tell developer not to do this for more performance gain
+  The reason is because we don't want to create more maps and more .find() calls for GET, POST and all the methods
+  This check also does not matter in performance because this is when the server is SETTING UP not actually responding to calls*/
+  if (routeMaxCharacters.find(route) != routeMaxCharacters.end()) {
+    cerr << "Please do not use the same url for both a GET and POST. It will help the server run faster and you will run into some issues if you do not change this!\n";
+  }
+  // If not specified, use default max characters
+  if (maxCharacters == -1) {
+    routeMaxCharacters[route] = defaultMaxCharacters;
+  } else {
+    routeMaxCharacters[route] = maxCharacters;
+  }
   updateRouteMap(route);
 }
 
 /*
   Given:
   > /api/createTeam
-  > 
+  >
 
   currentMiddlewareRoutesMap: {
     "/api/createteam": protectJWT*,
     "/api/postannoucement": protectJWT*
   }
 */
-void Server::updateRouteMap(const string& route) {
+void Server::updateRouteMap(const string &route) {
   middlewareRoutesMap[route] = currentMiddlewareRoutes;
 }
 
@@ -329,9 +360,10 @@ string Server::handleRequest(HttpRequest &req) {
   const string errorMsg = req.url + " not found!";
   // Always allow OPTIONS for CORS preflight
   if (req.method == "OPTIONS") {
-    return sendString("200 OK", "");;
+    return sendString("200 OK", "");
   }
-  // First, handle middleware. This should be efficient because it's just a .find() call which is usually O(1)
+  // First, handle middleware. This should be efficient because it's just a
+  // .find() call which is usually O(1)
   auto it = middlewareRoutesMap.find(req.url);
   if (it != middlewareRoutesMap.end()) {
     const vector<MiddlewareFunc> mfs = it->second;
@@ -361,24 +393,10 @@ string Server::handleRequest(HttpRequest &req) {
       return sendString("404 Not Found", errorMsg);
     }
   } else if (req.method == "OPTIONS") {
-    return sendString("200 OK", ""); 
+    return sendString("200 OK", "");
   }
   return sendString("404 Not Found", errorMsg);
 }
-
-// TODO: parse multipart/form-data
-/*
-POST /upload HTTP/1.1
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryX
-
-------WebKitFormBoundaryX
-Content-Disposition: form-data; name="file"; filename="myfile.pdf"
-Content-Type: application/pdf
-
-(binary PDF data here)
-------WebKitFormBoundaryX--
-*/
-
 
 string Response::toString() const {
   string response = "HTTP/1.1 " + status + "\r\n";
@@ -386,9 +404,11 @@ string Response::toString() const {
 
   // Implement CORS
   if (!Global::serverOrigin.empty()) {
-    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
+    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin +
+                    "\r\n");
     response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
-    response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+    response.append(
+        "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
     response.append("Access-Control-Allow-Credentials: true\r\n");
   }
 
@@ -405,9 +425,11 @@ string sendString(const string &status, const string &body) {
 
   // Implement CORS
   if (!Global::serverOrigin.empty()) {
-    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin + "\r\n");
+    response.append("Access-Control-Allow-Origin: " + Global::serverOrigin +
+                    "\r\n");
     response.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n");
-    response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+    response.append(
+        "Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
     response.append("Access-Control-Allow-Credentials: true\r\n");
   }
 
@@ -415,6 +437,6 @@ string sendString(const string &status, const string &body) {
   response.append("Content-Length: " + to_string(body.length()) + "\r\n" +
                   "\r\n");
   response.append(body);
-  
+
   return response;
 }

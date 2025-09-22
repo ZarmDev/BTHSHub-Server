@@ -30,7 +30,7 @@ using namespace std;
 
 namespace ScheduleDB {
     // Store in Redis (written by AI)
-    void storeScheduleInRedis(const vector<Day>& schedule, const string& userId) {
+    const string storeScheduleInRedis(const vector<Day>& schedule, const string& userId) {
         nlohmann::json j = PDF::scheduleToJson(schedule);
         string jsonString = j.dump();
         
@@ -44,6 +44,7 @@ namespace ScheduleDB {
             nlohmann::json dayJson = PDF::scheduleToJson({day});
             redis.set("schedule:day:" + to_string(day.dayNumber), dayJson.dump());
         }
+        return jsonString;
     }
 
     // returns json dump (string)

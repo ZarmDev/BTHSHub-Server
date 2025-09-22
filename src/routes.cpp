@@ -6,6 +6,7 @@
 #include "scheduledatabase.h"
 #include "utils.h"
 #include <iostream>
+#include <nlohmann/json_fwd.hpp>
 #include <sodium.h>
 #include <string>
 #include <vector>
@@ -183,15 +184,6 @@ string setDailyAnnoucement(HttpRequest &req) {
   return response;
 }
 
-// Receive the data as binary and ensure client has header of 'Content-Type': 'multipart/form-data',
-string uploadSchedule(HttpRequest &req) {
-  return "";
-  // TODO: Set the maximum amount of characters a client can send. Fix lib.cpp to somehow be able to change the amount it reads
-  // Remember to check the file size because if it's too big they clearly are slowing down the server
-  const string text = PDF::getPDFText("../src/ProgramCard.pdf");
-  vector<Day> parsed = PDF::parseSchedule(text);
-}
-
 /*
 Expect req.data to be:
 teamname
@@ -301,6 +293,7 @@ TODO: FILL THIS OUT
 */
 // Usage of AI/me
 string uploadPDF(HttpRequest &req) {
+  cout << "extracting...\n";
   auto pdf = extractPdfFromRequest(req);
     if (!pdf) {
         return sendString("400 Bad Request", "{\"error\":\"Invalid PDF upload\"}");
@@ -316,9 +309,9 @@ string uploadPDF(HttpRequest &req) {
     
     vector<Day> schedule = PDF::parseSchedule(extractedText);
 
-    ScheduleDB::storeScheduleInRedis(schedule, getValueFromMiddleware(req, "userID"));
-    
-    return sendString("200 OK", "Uploaded schedule successfully.");
+    const string j = ScheduleDB::storeScheduleInRedis(schedule, getValueFromMiddleware(req, "userID"));
+  
+    return sendString("200 OK", j);
 }
 
 /*
