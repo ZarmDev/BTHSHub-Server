@@ -4,12 +4,12 @@
 #include "routes.h"
 #include "userdatabase.h"
 #include "utils.h"
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sodium.h>
 #include <sw/redis++/errors.h>
-#include <cstdlib>
 
 using namespace std;
 
@@ -19,8 +19,8 @@ namespace fs = filesystem;
 string dir;
 string adminPassword;
 
-optional<fs::path> find_env_file(const vector<fs::path>& search_dirs) {
-  for (const auto& dir : search_dirs) {
+optional<fs::path> find_env_file(const vector<fs::path> &search_dirs) {
+  for (const auto &dir : search_dirs) {
     fs::path candidate = dir / ".env";
     if (fs::exists(candidate) && fs::is_regular_file(candidate)) {
       return candidate;
@@ -30,20 +30,17 @@ optional<fs::path> find_env_file(const vector<fs::path>& search_dirs) {
 }
 
 void readEnv() {
-  vector<fs::path> search_paths = {
-    fs::current_path(),
-    fs::current_path().parent_path()
-  };
+  vector<fs::path> search_paths = {fs::current_path(),
+                                   fs::current_path().parent_path()};
   optional<fs::path> env_path = find_env_file(search_paths);
 
-  if (!env_path.has_value())
-  {
+  if (!env_path.has_value()) {
     cerr << "You did not create an .env file. See README.md for more "
             "information.\n";
   }
   ifstream f(env_path.value());
-  cout << "Current working directory: "
-              << filesystem::current_path() << filesystem::exists(".env") << endl;
+  cout << "Current working directory: " << filesystem::current_path()
+       << filesystem::exists(".env") << endl;
   // if (!f.is_open()) {
   //   cerr << "You did not create an .env file. See README.md for more "
   //           "information.\n";
@@ -80,13 +77,15 @@ int main(int argc, char **argv) {
     cerr << "Failed to initialize libsodium" << endl;
     return 1;
   }
-  // Initalize server on 4221
-  server.init("4221");
+  string defaultPort = "4221";
+  // Use Heroku's assigned port
+  const char* envPort = getenv("PORT");
+  // Initalize based on if env port exists
+  server.init(envPort ? envPort : defaultPort);
   // Maximum of 1KB for any request by default
   server.setDefaultMaxCharacters(1000);
   // NOT FOR PRODUCTION. Change to server url during production.
   Global::serverOrigin = "*";
-
 
   // NOT FOR PRODUCTION
   server.post("/adminsetup", [](HttpRequest &req) -> string {
@@ -118,7 +117,8 @@ int main(int argc, char **argv) {
   server.post("/api/uploadschedule", uploadPDF, 1024 * 250);
   server.get("/api/getschedule", getSchedule);
 
-  // only allow real users who are also members of the team, an admin or a coach/moderator
+  // only allow real users who are also members of the team, an admin or a
+  // coach/moderator
   server.use({protectJWT, protectTeamMember});
   server.get("/api/getteammembers", getTeamMembers);
   server.get("/api/getteamcoaches", getTeamCoaches);
@@ -127,7 +127,8 @@ int main(int argc, char **argv) {
   server.post("/api/getteaminfo", getTeamInfo);
 
   server.use(protectModeratorOrAdmin);
-  // protected only for moderators (coaches, club execs) or admins. sends userID in req.extra
+  // protected only for moderators (coaches, club execs) or admins. sends userID
+  // in req.extra
   server.post("/mod/createteam", createTeamRoute);
   server.post("/mod/addotherusertoteam", addOtherUserToTeam);
 

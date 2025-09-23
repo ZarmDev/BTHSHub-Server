@@ -19,7 +19,7 @@
 
 3. **Restrict Redis Network Access**:
    ```bash
-   # In redis.conf
+   # In redis->conf
    bind 127.0.0.1
    protected-mode yes
    ```
@@ -63,10 +63,10 @@
    ```cpp
    bool checkRateLimit(const string& ip_address, const string& endpoint) {
        string key = "ratelimit:" + endpoint + ":" + ip_address;
-       long long count = redis.incr(key);
+       long long count = redis->incr(key);
        
        if (count == 1) {
-           redis.expire(key, 60); // Set TTL for the key (1 minute)
+           redis->expire(key, 60); // Set TTL for the key (1 minute)
        }
        
        // Return true if within limit, false otherwise
@@ -113,7 +113,7 @@
        
        // For critical events, also log to Redis
        if (event_type == "LOGIN_FAILURE" || event_type == "UNAUTHORIZED_ACCESS") {
-           redis.rpush("security:events", log_entry);
+           redis->rpush("security:events", log_entry);
        }
    }
    ```

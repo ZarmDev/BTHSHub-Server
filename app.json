@@ -1,0 +1,19 @@
+{
+  "name": "BTHSHub-Server",
+  "description": "A server for Brooklyn Tech's app hub",
+  "repository": "https://github.com/ZarmDev/BTHSHub-Server",
+  "keywords": ["c++", "server"],
+  "env": {
+    "JWT_SECRET": {
+      "description": "A secret key for JWT token generation",
+      "generator": "secret"
+    },
+    "ADMINPASS": {
+      "description": "Admin password for initial setup",
+      "required": true
+    }
+  },
+  "addons": [
+    "heroku-redis"
+  ]
+}

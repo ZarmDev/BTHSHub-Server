@@ -37,18 +37,18 @@ namespace ScheduleDB {
         // It may seem inefficient, but the schedule only has to be stored once per year for each user. The most common thing the user will do is look at what courses they have every day, not set the schedule all the time.
 
         // Store the entire schedule as one key
-        redis.set("schedule:" + userId, jsonString);
+        redis->set("schedule:" + userId, jsonString);
         
         // AND store each day separately for faster individual day access. It's likely that the entire schedule will be used when there is sharing schedules, but, the per day will be used on a daily basis
         for (const auto& day : schedule) {
             nlohmann::json dayJson = PDF::scheduleToJson({day});
-            redis.set("schedule:day:" + to_string(day.dayNumber), dayJson.dump());
+            redis->set("schedule:day:" + to_string(day.dayNumber), dayJson.dump());
         }
         return jsonString;
     }
 
     // returns json dump (string)
     OptionalString getSchedule(const string& userId) {
-        return redis.get("schedule:" + userId);
+        return redis->get("schedule:" + userId);
     }
 }

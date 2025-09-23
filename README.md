@@ -99,10 +99,13 @@ and then
 ```
 cmake --build ./build
 ```
-# Plan
-1. Host on Heroku (for 24 months)
-2. Use name.com or namecheap github student offer
-3. It could also be hosted on AppWrite
+# Deploy to Heroku
+```
+heroku create bthshub-server
+heroku config:set JWT_SECRET=$(openssl rand -hex 32)
+heroku config:set ADMINPASS=your_secure_admin_password
+
+```
 # TODO
 For more ideas, see ideas.md
 ## Server: (base goals)

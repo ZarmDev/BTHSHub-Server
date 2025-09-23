@@ -45,7 +45,7 @@ bool protectRoute(HttpRequest &req, AccessLevel level) {
   userID = JWT::getUserIdFromToken(authHeader);
   if (userID.empty()) return false;
   
-  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
+  string adminLevel = redis->hget("user:" + userID, "adminLevel").value();
   req.extra["userID"] = userID;
   
   // Check permissions based on level

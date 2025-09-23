@@ -11,15 +11,15 @@ using namespace std;
 //                  .sign(jwt::algorithm::hs256{JWT_SECRET});
 // cout << token << '\n';
 
-// redis.set("session:" + token, "user42", chrono::seconds(3600));
-// auto val = redis.get("se23", {{"user_id", "user42"},
+// redis->set("session:" + token, "user42", chrono::seconds(3600));
+// auto val = redis->get("se23", {{"user_id", "user42"},
 //                               {"login_time", "2025-08-07T13:45:00Z"}});
-// redis.expire("session:abc123", chrono::seconds(3600));ssion:abc123");
+// redis->expire("session:abc123", chrono::seconds(3600));ssion:abc123");
 // if (val)
 // {
 //   cout << "Session belongs to: " << *val << endl;
 // }
-// redis.hset("session:abc1
+// redis->hset("session:abc1
 using traits = jwt::traits::nlohmann_json;
 namespace JWT {
 const string generateToken(const string &user_id) {

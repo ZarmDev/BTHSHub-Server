@@ -55,7 +55,7 @@ void printAllRedisKeys() {
 
   // Scan loop
   do {
-    cursor = redis.scan(cursor, "*", 100, back_inserter(keys));
+    cursor = redis->scan(cursor, "*", 100, back_inserter(keys));
   } while (cursor != 0);
 
   // Print all keys

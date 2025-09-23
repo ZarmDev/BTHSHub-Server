@@ -48,12 +48,12 @@ const string createUser(const string &username, const string &password,
   string email_key = "email:" + email;
 
   // Check if username or email already exists
-  if (redis.exists(user_key) || redis.exists(email_key)) {
+  if (redis->exists(user_key) || redis->exists(email_key)) {
     return "Error: Username or email already exists.";
   }
 
   // Generate a new user ID (you can use an atomic counter or UUID)
-  string user_id = to_string(redis.incr("user:id:counter"));
+  string user_id = to_string(redis->incr("user:id:counter"));
 
   // Used for the hash
   string userhash_key = "user:" + user_id;
@@ -70,25 +70,25 @@ const string createUser(const string &username, const string &password,
       {"status", "offline"},
       {"profile_picture_url", ""},
       {"adminLevel", "0"}};
-  redis.hmset(userhash_key, hash.begin(), hash.end());
+  redis->hmset(userhash_key, hash.begin(), hash.end());
 
   // Store user_tags (like "taking 3 APS" or "Stuyvesant reject")
   // string tags_key = user_key + ":tags";
   // This can be done later since we don't know what the user wants...
 
   // Index by username and email
-  redis.set(user_key, user_id);
-  redis.set(email_key, user_id);
+  redis->set(user_key, user_id);
+  redis->set(email_key, user_id);
 
   // Add to global user sets
-  redis.sadd("users:all", user_id);
-  // redis.zadd("users:by_created", user_id, time(nullptr));
+  redis->sadd("users:all", user_id);
+  // redis->zadd("users:by_created", user_id, time(nullptr));
 
   return "Created user '" + username + "' with ID " + user_id;
 }
 
 string getUserIdByUsername(const string& username) {
-  OptionalString user_id_opt = redis.get("username:" + username);
+  OptionalString user_id_opt = redis->get("username:" + username);
   if (!user_id_opt) {
     cout << "Username " << username << " not found" << endl;
     return "";
@@ -97,7 +97,7 @@ string getUserIdByUsername(const string& username) {
 }
 
 string getUsernameFromUserId(const string& userID) {
-  OptionalString user_id_opt = redis.hget("user:" + userID, "username");
+  OptionalString user_id_opt = redis->hget("user:" + userID, "username");
   if (!user_id_opt) {
     cout << userID << " not found\n";
     return "";
@@ -109,7 +109,7 @@ string getUsernameFromUserId(const string& userID) {
 bool grantAdminLevel(const string& username, string level) {
   try {
     // Set adminLevel to 2 (admin)
-    redis.hset("user:" + UserDB::getUserIdByUsername(username), "adminLevel", level);
+    redis->hset("user:" + UserDB::getUserIdByUsername(username), "adminLevel", level);
   } catch (...) {
     return false;
   }
@@ -118,7 +118,7 @@ bool grantAdminLevel(const string& username, string level) {
 
 void printUserHash(const string& user_id) {
     unordered_map<string, string> user_data;
-    redis.hgetall("user:" + user_id, inserter(user_data, user_data.begin()));
+    redis->hgetall("user:" + user_id, inserter(user_data, user_data.begin()));
     cout << "user:" << user_id << " hash fields:\n";
     for (const auto& [key, value] : user_data) {
         cout << key << ": " << value << '\n';
@@ -136,7 +136,7 @@ string handleLogin(const string &username, const string &password) {
   
   const string userhash_key = "user:" + user_id;
   unordered_map<string, string> user_data;
-  redis.hgetall(userhash_key, inserter(user_data, user_data.begin()));
+  redis->hgetall(userhash_key, inserter(user_data, user_data.begin()));
   cout << "Verifying password\n";
 
   // Step 2: Verify password
@@ -152,7 +152,7 @@ string handleLogin(const string &username, const string &password) {
 }
 
 bool isUserAdmin(const string& userID) {
-  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
+  string adminLevel = redis->hget("user:" + userID, "adminLevel").value();
   if (adminLevel == "2") {
     return true;
   }
@@ -161,7 +161,7 @@ bool isUserAdmin(const string& userID) {
 
 OptionalString getPermissionLevel(const string& userID)
 {
-  OptionalString adminLevel = redis.hget("user:" + userID, "adminLevel");
+  OptionalString adminLevel = redis->hget("user:" + userID, "adminLevel");
   return adminLevel;
 }
 } // namespace UserDB

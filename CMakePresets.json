@@ -8,6 +8,35 @@
       "cacheVariables": {
         "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja"
       }
+    },
+    {
+      "name": "release",
+      "inherits": "vcpkg",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG"
+      }
+    },
+    {
+      "name": "heroku",
+      "inherits": "release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O2 -DNDEBUG"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release",
+      "jobs": 4
+    },
+    {
+      "name": "heroku",
+      "configurePreset": "heroku",
+      "configuration": "Release"
     }
   ]
 }
