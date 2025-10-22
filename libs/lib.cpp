@@ -26,27 +26,40 @@ using namespace std;
 
 // Extract the path from a request (example: localhost:4221/test) -> returns
 // test
-char *getURLPath(char *buffer, int n) {
-  // Use a static char so it doesn't get deallocated when the function exits
-  // (even though the return type is pointer)
-  static char url[1024];
-  int index = 0;
-  bool isURL = false;
 
-  for (int i = 0; i < n; i++) {
-    if (isURL && buffer[i] == ' ') {
-      break;
-    } else if (buffer[i] == ' ') {
-      isURL = true;
-    } else if (isURL == true) {
-      url[index++] = buffer[i];
-    }
-  }
+// const char* stateToString(int state) {
+//   switch (state) {
+//     case 0: return "TYPE";
+//     case 1: return "URL";
+//     case 2: return "PROTO";
+//     case 3: return "FIRST";
+//     case 4: return "SECOND";
+//     case 5: return "DATA";
+//     default: return "UNKNOWN";
+//   }
+// }
 
-  url[index] = '\0'; // Null-terminate the string, this signals the end of C
-                     // style strings
-  return url;
-}
+// char *getURLPath(char *buffer, int n) {
+//   // Use a static char so it doesn't get deallocated when the function exits
+//   // (even though the return type is pointer)
+//   static char url[1024];
+//   int index = 0;
+//   bool isURL = false;
+
+//   for (int i = 0; i < n; i++) {
+//     if (isURL && buffer[i] == ' ') {
+//       break;
+//     } else if (buffer[i] == ' ') {
+//       isURL = true;
+//     } else if (isURL == true) {
+//       url[index++] = buffer[i];
+//     }
+//   }
+
+//   url[index] = '\0'; // Null-terminate the string, this signals the end of C
+//                      // style strings
+//   return url;
+// }
 bool Server::init(const string &port) {
   // Flush after every cout / cerr
   cout << unitbuf;
@@ -153,16 +166,32 @@ void Server::handleClient(int client_fd) {
   int totalChars = 0;
   int contentLengthHeader = 0;
   int bodyBytes = 0;
+  int leftOver = 0;
+  // bool waitForReal = false;
 
   while (shouldContinue) {
     int bytes_received = recv(client_fd, buffer, CHUNK_SIZE, 0);
     if (bytes_received == 0) {
+      cout << "Client closed connection" << endl;
+      close(client_fd);
       break;
     } else if (bytes_received == -1) {
+      cout << "No more bytes received\n";
+      string response = sendString("400 Bad Request", "Socket not recived");
+      send(client_fd, response.c_str(), response.length(), 0);
       close(client_fd);
       return;
     }
     for (int i = 0; i < bytes_received; i++) {
+      if (leftOver != 0) {
+        i += leftOver;
+        leftOver = 0;
+
+        // Handle edge cases
+        if (i >= bytes_received) {
+          break;
+        }
+      }
       char c = buffer[i];
       if (state == STATE::TYPE) {
         if (c == ' ') {
@@ -184,7 +213,7 @@ void Server::handleClient(int client_fd) {
         if (c == '\r') {
           protocol = curr;
           curr = "";
-          i++;
+          leftOver++;
           state = STATE::FIRST;
         } else {
           curr += c;
@@ -193,6 +222,7 @@ void Server::handleClient(int client_fd) {
         if (c == '\r') {
           curr = "";
           state = STATE::DATA;
+          leftOver++;
           // THIS IS THE CHECKS BEFORE IT READS THE BODY
           if (httpMethod == "GET") {
             shouldContinue = false;
@@ -202,13 +232,24 @@ void Server::handleClient(int client_fd) {
           auto it = headers.find("Content-Length");
           if (it != headers.end()) {
             contentLengthHeader = stoi(it->second);
+            if (contentLengthHeader == 0) {
+              data = "";
+              shouldContinue = false;
+              break;
+            }
+            cout << "Found content-length: " << contentLengthHeader << '\n';
           }
-          // This does add an extra .find() call but we need it for max character checks on specfiic urls
+          // This does add an extra .find() call but we need it for max
+          // character checks on specfiic urls
           auto it2 = routeMaxCharacters.find(url);
           if (it2 != routeMaxCharacters.end()) {
             // Check if body is too long based on specified max characters
             if (contentLengthHeader > it2->second) {
               cout << "body too long based on given max characters!\n";
+              string response =
+                  sendString("413 Payload Too Large",
+                             "body too long based on given max characters!");
+              send(client_fd, response.c_str(), response.length(), 0);
               close(client_fd);
               return;
             }
@@ -216,6 +257,9 @@ void Server::handleClient(int client_fd) {
             // Check if body is too long based on defaultMaxCharacters
             if (contentLengthHeader > defaultMaxCharacters) {
               cout << "body too long!\n";
+              string response = sendString("413 Payload Too Large",
+                                           "content length is too high!");
+              send(client_fd, response.c_str(), response.length(), 0);
               close(client_fd);
               return;
             }
@@ -224,7 +268,7 @@ void Server::handleClient(int client_fd) {
           headerData.first = curr;
           curr = "";
           state = STATE::SECOND;
-          i++;
+          leftOver++;
         } else {
           curr += c;
         }
@@ -234,32 +278,45 @@ void Server::handleClient(int client_fd) {
           headers.insert(headerData);
           curr = "";
           state = STATE::FIRST;
-          i++;
+          leftOver++;
         } else {
           curr += c;
         }
       } else if (state == STATE::DATA) {
+        // cout << c << '\n';
         curr += c;
         bodyBytes++;
+        // printRawString(curr);
+        // cout << '\n';
+        // cout << bodyBytes << ' ' << contentLengthHeader << '\n';
         // May seem like it can create an infinite loop but there is a check in
         // place if too many characters are read
-        if (bodyBytes > contentLengthHeader) {
+        if (bodyBytes >= contentLengthHeader) {
           shouldContinue = false;
           break;
         }
       }
     }
-    data = curr;
-    totalChars += bytes_received;
-    // Just as a precaution, headers shouldn't be longer than 400 characters 90% of the time. So we will reject those because otherwise they could just spam header data
-    if (state != STATE::DATA && totalChars > 400) {
-      cout << "Read too many chars\n";
-      cout << "Request:\n";
-      cout << buffer;
-      close(client_fd);
-      return;
+
+    // Just as a precaution, headers shouldn't be longer than 400 characters 90%
+    // of the time. So we will reject those because otherwise they could just
+    // spam header data
+    if (state != STATE::DATA) {
+      totalChars += bytes_received;
+      totalChars += leftOver;
+      if (totalChars > 400) {
+        cout << "Read too many chars\n";
+        string response = sendString("413 Payload Too Large",
+                                     "Too many characters in your request!");
+        send(client_fd, response.c_str(), response.length(), 0);
+        close(client_fd);
+        return;
+      }
     }
   }
+  // cout << "Outside of loop\n";
+  // printRawString(curr);
+  data = curr;
 
   // if (n >= maximumCharacters - 1) {
   //   cout << "Request too large, dropping connection\n";
@@ -310,11 +367,15 @@ void Server::use(const vector<MiddlewareFunc> &funcs) {
 
 void Server::get(const string &route, RequestFunc handler, int maxCharacters) {
   getRoutes[route] = handler;
-  /* If this exists in the map, tell developer not to do this for more performance gain
-  The reason is because we don't want to create more maps and more .find() calls for GET, POST and all the methods
-  This check also does not matter in performance because this is when the server is SETTING UP not actually responding to calls*/
+  /* If this exists in the map, tell developer not to do this for more
+  performance gain The reason is because we don't want to create more maps and
+  more .find() calls for GET, POST and all the methods This check also does not
+  matter in performance because this is when the server is SETTING UP not
+  actually responding to calls*/
   if (routeMaxCharacters.find(route) != routeMaxCharacters.end()) {
-    cerr << "Please do not use the same url for both a GET and POST. It will help the server run faster and you will run into some issues if you do not change this!\n";
+    cerr << "Please do not use the same url for both a GET and POST. It will "
+            "help the server run faster and you will run into some issues if "
+            "you do not change this!\n";
   }
   // If not specified, use default max characters
   if (maxCharacters == -1) {
@@ -327,11 +388,15 @@ void Server::get(const string &route, RequestFunc handler, int maxCharacters) {
 
 void Server::post(const string &route, RequestFunc handler, int maxCharacters) {
   postRoutes[route] = handler;
-  /* If this exists in the map, tell developer not to do this for more performance gain
-  The reason is because we don't want to create more maps and more .find() calls for GET, POST and all the methods
-  This check also does not matter in performance because this is when the server is SETTING UP not actually responding to calls*/
+  /* If this exists in the map, tell developer not to do this for more
+  performance gain The reason is because we don't want to create more maps and
+  more .find() calls for GET, POST and all the methods This check also does not
+  matter in performance because this is when the server is SETTING UP not
+  actually responding to calls*/
   if (routeMaxCharacters.find(route) != routeMaxCharacters.end()) {
-    cerr << "Please do not use the same url for both a GET and POST. It will help the server run faster and you will run into some issues if you do not change this!\n";
+    cerr << "Please do not use the same url for both a GET and POST. It will "
+            "help the server run faster and you will run into some issues if "
+            "you do not change this!\n";
   }
   // If not specified, use default max characters
   if (maxCharacters == -1) {

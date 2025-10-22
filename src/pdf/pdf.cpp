@@ -267,7 +267,7 @@ string getPDFText(const vector<unsigned char>& pdfData) {
       }
     }
 
-    writeToFile("test.txt", extractedText);
+    // writeToFile("test.txt", extractedText);
     // Actually return the accumulated text
     return extractedText;
 
@@ -355,7 +355,7 @@ vector<Day> parseSchedule(const string &text) {
 
   // 4 ZL/4  LUNCH Room CAFE No Teacher 10:23-11:04 ZL/4
   // period classID course roomtext room teacher time
-  cout << "In parsed schedule\n";
+  // cout << "In parsed schedule\n";
   // Size of <<EMPTY_CELL>> plus a space
   constexpr int sizeOfEmptyCell = 14;
   for (size_t i = text.find("Day 10") + sizeOfEmptyCell + 8; i < text.length(); i++) {
@@ -369,17 +369,17 @@ vector<Day> parseSchedule(const string &text) {
       // }
       periodNum++;
       state = PARSER::COURSEID;
-      cout << "||||||||||||Period: " << text.at(i) << "e||||||||||||\n";
+      // cout << "||||||||||||Period: " << text.at(i) << "e||||||||||||\n";
       // skip the space
       i += 2;
       courseIDIdx = i;
       break;
     case PARSER::COURSEID:
       if (text.at(i) == '<') {
-        cout << "|Day " << courseCount + 2 << "|\n";
+        // cout << "|Day " << courseCount + 2 << "|\n";
         i += sizeOfEmptyCell;
         courseCount++;
-        cout << "FREE PERIOD\n";
+        // cout << "FREE PERIOD\n";
         // If the edge case is that the last column has an empty course, we just
         // go to PARSER::PERIOD while skipping the empty cell
         if (courseCount == 9) {
@@ -396,8 +396,8 @@ vector<Day> parseSchedule(const string &text) {
         continue;
       }
       if (text.at(i) == ' ') {
-        cout << "|Day " << courseCount + 2 << "|\n";
-        cout << text.substr(courseIDIdx, i - courseIDIdx) << "e\n";
+        // cout << "|Day " << courseCount + 2 << "|\n";
+        // cout << text.substr(courseIDIdx, i - courseIDIdx) << "e\n";
         currentCourse.courseId = removeWhitespace(text.substr(courseIDIdx, i - courseIDIdx));
         state = PARSER::COURSE;
         idxRoom = text.find("Room", i);
@@ -410,7 +410,7 @@ vector<Day> parseSchedule(const string &text) {
       // which you can note
       if (i == idxRoom) {
         string course = trim(text.substr(courseIdx, i - courseIdx));
-        cout << course << "e\n";
+        // cout << course << "e\n";
         currentCourse.courseName = course;
         i += 5;
         roomIdx = i;
@@ -420,7 +420,7 @@ vector<Day> parseSchedule(const string &text) {
       break;
     case PARSER::ROOM:
       if (text.at(i) == ' ') {
-        cout << text.substr(roomIdx, i - roomIdx) << "e\n";
+        // cout << text.substr(roomIdx, i - roomIdx) << "e\n";
         currentCourse.room = removeWhitespace(text.substr(roomIdx, i - roomIdx));
         i++;
         teacherIdx = i;
@@ -430,7 +430,7 @@ vector<Day> parseSchedule(const string &text) {
     case PARSER::TEACHER:
       // Remove whitespace, sometimes there is more or less whitespace
       if (isdigit(text.at(i))) {
-        cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
+        // cout << text.substr(teacherIdx, i - teacherIdx) << "e\n";
         currentCourse.teacher = trim(text.substr(teacherIdx, i - teacherIdx));
         state = PARSER::TIME;
         timeIdx = i;
@@ -449,12 +449,12 @@ vector<Day> parseSchedule(const string &text) {
       break;
     case PARSER::TIME2:
       if (text.at(i) == ' ') {
-        cout << text.substr(timeIdx, i - timeIdx) << "e\n";
+        // cout << text.substr(timeIdx, i - timeIdx) << "e\n";
         currentCourse.timeSlot = removeWhitespace(text.substr(timeIdx, i - timeIdx));
         i++;
         coursesRow[periodNum][courseCount] = currentCourse;
 
-        cout << courseCount << '\n';
+        // cout << courseCount << '\n';
 
         if (courseCount == 9) {
           state = PARSER::PERIOD;
@@ -489,7 +489,7 @@ vector<Day> parseSchedule(const string &text) {
     cycleDays.push_back(day);
   }
   // writeToFile("test.txt", text);
-  printSchedule(cycleDays);
+  // printSchedule(cycleDays);
   return cycleDays;
 }
 } // namespace PDF

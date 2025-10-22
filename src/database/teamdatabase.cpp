@@ -54,7 +54,7 @@ bool addUserToTeamHelper(const string& user_id, const string& team_id) {
   string user_teams_key = "user:" + user_id + ":teams";
 
   // Add user to team's member set
-  redis->sadd(team_members_key, UserDB::getUsernameFromUserId(user_id));
+  redis.sadd(team_members_key, UserDB::getUsernameFromUserId(user_id));
 
   OptionalString teamName = TeamDB::getTeamNameFromID(team_id);
   
@@ -62,19 +62,19 @@ bool addUserToTeamHelper(const string& user_id, const string& team_id) {
     return false;
   }
   // Add team to user's team set
-  redis->sadd(user_teams_key, teamName.value());
+  redis.sadd(user_teams_key, teamName.value());
 
   // Optionally, track join time
   double now = time(nullptr);
-  redis->zadd(team_members_key + ":by_joined", user_id, now);
-  redis->zadd(user_teams_key + ":by_joined", user_id, now);
+  redis.zadd(team_members_key + ":by_joined", user_id, now);
+  redis.zadd(user_teams_key + ":by_joined", user_id, now);
 
   cout << "Added user " << user_id << " to team " << team_id << endl;
   return true;
 }
 
 bool addOwnerToTeamHelper(const string& userID, const string& teamID) {
-  redis->sadd("team:" + teamID + ":owners", UserDB::getUsernameFromUserId(userID));
+  redis.sadd("team:" + teamID + ":owners", UserDB::getUsernameFromUserId(userID));
 
   return true;
 }
@@ -84,10 +84,10 @@ namespace TeamDB {
 bool addUserToTeam(const string& user_id, const string& team_id) {
   string team_key = "team:" + team_id;
   // First, check the level of permission the user has. A user can only add themselves to private teams if they are an admin
-  string adminLevel = *redis->hget("user:" + user_id, "adminLevel");
+  string adminLevel = *redis.hget("user:" + user_id, "adminLevel");
 
   // Second, make sure that the team is public, if not you must be invited or an admin
-  string isPrivate = *redis->hget(team_key, "private");
+  string isPrivate = *redis.hget(team_key, "private");
   if (isPrivate == "true") {
     if (adminLevel != "2") {
       return false;
@@ -109,8 +109,8 @@ bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInv
     cout << "Cannot invite yourself...\n";
     return false;
   }
-  const string adminLevel = redis->hget("user:" + userInvitingID, "adminLevel").value();
-  bool isTeamOwner = redis->sismember("team:" + team_id + ":owners", UserDB::getUsernameFromUserId(userInvitingID));
+  const string adminLevel = redis.hget("user:" + userInvitingID, "adminLevel").value();
+  bool isTeamOwner = redis.sismember("team:" + team_id + ":owners", UserDB::getUsernameFromUserId(userInvitingID));
   // First case, regardless of the case, if you are an admin you can invite anyone
   bool firstCase = adminLevel == "2";
   // Second case, if you are a moderator, you are allowed to invite anyone as long as you own the team
@@ -124,7 +124,7 @@ bool addOtherUserToTeam(const string& userInvitingID, const string& userBeingInv
   return false;
 }
 
-const string& createTeam(const string &teamName, const string& isPrivate, const string& userID) {
+const string createTeam(const string &teamName, const string& isPrivate, const string& userID) {
   if (teamName.contains("\\")) {
     return "";
   }
@@ -133,27 +133,27 @@ const string& createTeam(const string &teamName, const string& isPrivate, const 
 
   // Step 1: Generate a new team ID by incrementing the value at the key
   // "team:id:counter"
-  const string teamId = to_string(redis->incr("team:id:counter"));
+  const string teamId = to_string(redis.incr("team:id:counter"));
 
   // Step 2: Store team metadata
   const string teamHashKey = "team:" + teamId;
   const string teamPointerKey =  "teamname:" + teamName;
 
-  /* redis->hset("user:100", "name", "Alice"); */
+  /* redis.hset("user:100", "name", "Alice"); */
   /* Equivalent to: user["name"] = "Alice"; */
   unordered_map<string, string> m = {{"name", teamName},
                                      {"created_at", to_string(time(nullptr))},
                                      {"private", isPrivate}};
-  redis->hmset(teamHashKey, m.begin(), m.end());
-  redis->set(teamPointerKey, teamId);
+  redis.hmset(teamHashKey, m.begin(), m.end());
+  redis.set(teamPointerKey, teamId);
 
   // Step 3: Add to tracking set
   // Use teams:all for unordered, fast set operations. Ex: Find team exists, getting list of all teams
-  redis->sadd("teams:all", teamName);
+  redis.sadd("teams:all", teamName);
 
   // Step 4: Add to sorted set by timestamp (less useful than above)
   // Use teams:by_created for ordered queries (by creation time). Ex: Show new teams
-  redis->zadd("teams:by_created", teamId, time(nullptr));
+  redis.zadd("teams:by_created", teamId, time(nullptr));
 
   cout << "Created team '" << teamName << "' with ID " << teamId << endl;
 
@@ -169,64 +169,79 @@ const string& createTeam(const string &teamName, const string& isPrivate, const 
 
 bool teamExistsById(const string& teamId) {
   string team_key = "team:" + teamId;
-  return redis->exists(team_key) == 1;
+  return redis.exists(team_key) == 1;
 }
 
 bool teamExistsByName(const string& teamName) {
-  // redis->exists will return 1 if the key exists
-  return redis->exists("teamname:" + teamName) == 1;
+  // redis.exists will return 1 if the key exists
+  return redis.exists("teamname:" + teamName) == 1;
 }
 
 // does not check if owner is on the team
 bool userIsOnTeam(const string& teamName, const string& username) {
   OptionalString teamID = getTeamIDFromName(teamName);
-  string teamKey = "team:" + teamID.value() + ":members";
-  return redis->sismember(teamKey, username);
+  if (teamID) {
+    string teamKey = "team:" + teamID.value() + ":members";
+    return redis.sismember(teamKey, username);
+  } else {
+    return false;
+  }
 }
 
 unordered_set<string> getAllTeams() {
   unordered_set<string> set;
-  redis->smembers("teams:all", inserter(set, set.begin()));
+  redis.smembers("teams:all", inserter(set, set.begin()));
   return set;
 }
 
 // get the teams OF a user
 unordered_set<string> getUserTeams(const string& userID) {
   unordered_set<string> set;
-  redis->smembers("user:" + userID + ":teams", inserter(set, set.begin()));
+  redis.smembers("user:" + userID + ":teams", inserter(set, set.begin()));
   return set;
 }
 
 unordered_set<string> getTeamMembers(const string& teamID) {
   unordered_set<string> set;
-  redis->smembers("team:" + teamID + ":members", inserter(set, set.begin()));
+  redis.smembers("team:" + teamID + ":members", inserter(set, set.begin()));
   return set;
 }
 
 unordered_set<string> getTeamOwners(const string& teamID) {
   unordered_set<string> set;
-  redis->smembers("team:" + teamID + ":owners", inserter(set, set.begin()));
+  redis.smembers("team:" + teamID + ":owners", inserter(set, set.begin()));
   return set;
 }
 
 unordered_map<string, string> getTeamInfo(const string& teamId) {
   string team_key = "team:" + teamId;
   unordered_map<string, string> hash;
-  redis->hgetall(team_key, inserter(hash, hash.end()));
+  redis.hgetall(team_key, inserter(hash, hash.end()));
   return hash;
 }
 
 OptionalString getTeamNameFromID(const string& teamID) {
-  return redis->hget("team:" + teamID, "name");
+  return redis.hget("team:" + teamID, "name");
 }
 
 OptionalString getTeamIDFromName(const string& teamName) {
-  return redis->get("teamname:" + teamName);
+  cout << "Looking up team ID for name: '" << teamName << "'" << endl;
+  OptionalString result = redis.get("teamname:" + teamName);
+  if (result) {
+    cout << "Found team ID: " << result.value() << endl;
+  } else {
+    cout << "Team ID not found!" << endl;
+    // Check if key exists
+    if (redis.exists("teamname:" + teamName)) {
+      cout << "Key exists but value can't be retrieved!" << endl;
+    }
+  }
+  return result;
 }
 
 // void register_teamName(Redis& redis, const string& teamName, long long
 // teamId) {
-//     redis->set("team:name:" + teamName, teamId);
+//     redis.set("team:name:" + teamName, teamId);
 // }
 
 /*
@@ -238,16 +253,16 @@ void postAnnoucement(const string& teamName, const string& content, const string
   lock_guard<mutex> lock(Global::redisMutex); // Lock during Redis operations
   
   const string teamKey = teamName + ":annoucement";
-  long long annoucement_id = redis->incr(teamKey + ":id:counter");
+  long long annoucement_id = redis.incr(teamKey + ":id:counter");
   unordered_map<string, string> m = {{"content", content},
                                           {"owner", owner},
                                      {"created_at", to_string(time(nullptr))}};
-  redis->hmset(teamKey + ":" + to_string(annoucement_id), m.begin(), m.end());
-  redis->sadd(teamKey + ":mentions", mentions.begin(), mentions.end());
+  redis.hmset(teamKey + ":" + to_string(annoucement_id), m.begin(), m.end());
+  redis.sadd(teamKey + ":mentions", mentions.begin(), mentions.end());
 }
 
 int getNumOfAnnoucements(string& teamName) {
-  Optional counter = redis->get(teamName+":annoucement:id:counter");
+  Optional counter = redis.get(teamName+":annoucement:id:counter");
   if (!counter) {
     return 0;
   }
@@ -263,7 +278,7 @@ nlohmann::json getRangeOfAnnoucements(const string& teamName, int start, int end
   for (int i = end; i >= start; i--) {
     string annoucementKey = teamName + ":annoucement:" + to_string(i);
     unordered_map<string, string> obj;
-    redis->hgetall(annoucementKey, inserter(obj, obj.begin()));
+    redis.hgetall(annoucementKey, inserter(obj, obj.begin()));
     if (!obj.empty()) {
       // Convert to JSON object
       nlohmann::json j = obj;

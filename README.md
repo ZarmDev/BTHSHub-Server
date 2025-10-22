@@ -80,10 +80,12 @@ sudo pacman -S libsodium
 # First time
 1. Ensure you have Cmake extension in Vscode or run cmake in the CLI
 2. Run ```openssl rand -hex 32``` in order to get a private key. Set it to JWT_SECRET in .env
-3. Optionally add an admin password if you are creating an admin account
+3. Add an admin password
+4. Either set PRODUCTION to TRUE or FALSE depending on if you are debugging or trying to run the server in production
 ```
 JWT_SECRET=xxx
 ADMINPASS=xxx
+PRODUCTION=FALSE
 ```
 4. Add the path to your vcpkg root to CMakePresets.json at "CMAKE_TOOLCHAIN_FILE". There is already a value there so just replace it.
 # Development

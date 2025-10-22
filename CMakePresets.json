@@ -2,7 +2,7 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "vcpkg",
+      "name": "debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
@@ -11,7 +11,7 @@
     },
     {
       "name": "release",
-      "inherits": "vcpkg",
+      "inherits": "debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG"
@@ -28,15 +28,8 @@
   ],
   "buildPresets": [
     {
-      "name": "release",
-      "configurePreset": "release",
-      "configuration": "Release",
-      "jobs": 4
-    },
-    {
-      "name": "heroku",
-      "configurePreset": "heroku",
-      "configuration": "Release"
+      "name": "debug-build",
+      "configurePreset": "debug"
     }
   ]
 }

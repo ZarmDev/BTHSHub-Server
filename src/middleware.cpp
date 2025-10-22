@@ -45,7 +45,7 @@ bool protectRoute(HttpRequest &req, AccessLevel level) {
   userID = JWT::getUserIdFromToken(authHeader);
   if (userID.empty()) return false;
   
-  string adminLevel = redis->hget("user:" + userID, "adminLevel").value();
+  string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   req.extra["userID"] = userID;
   
   // Check permissions based on level
@@ -78,16 +78,17 @@ bool protectModeratorOrAdmin(HttpRequest &req) {
 }
 
 bool protectTeamMember(HttpRequest &req) {
-  cout << "protectTeamMember\n";
   const string userID = getValueFromMiddleware(req, "userID");
   const string username = UserDB::getUsernameFromUserId(userID);
   cout << TeamDB::userIsOnTeam(req.data, username) << '\n';
   if (TeamDB::userIsOnTeam(req.data, username) || UserDB::isUserAdmin(userID)) {
     OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
     if (teamID) {
+      cout << "teamID (middleware): " << teamID.value() << '\n';
       req.extra["teamID"] = teamID.value();
+    } else {
+      cout << "teamID (middleware): " << " DOES NOT EXIST!!!!" << '\n';
     }
-    cout << "protectTeamMember success!\n";
     return true;
   } else {
     return false;

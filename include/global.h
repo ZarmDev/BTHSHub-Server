@@ -21,7 +21,7 @@ struct Day {
 
 namespace Global {
     extern string JWT_SECRET;
-    extern Redis* db;
+    extern Redis db;
     extern string serverOrigin;
     extern mutex redisMutex;
 }

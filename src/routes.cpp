@@ -42,7 +42,9 @@ string createTeamRoute(HttpRequest &req) {
   if (isPrivate != "0" && isPrivate != "1") {
     return sendString("404 Not Found", "Malformed request!");
   }
-  TeamDB::createTeam(teamName, isPrivate == "0" ? "false" : "true", getValueFromMiddleware(req, "userID"));
+  if (TeamDB::createTeam(teamName, isPrivate == "0" ? "false" : "true", getValueFromMiddleware(req, "userID")) == "") {
+    return sendString("404 Not Found", "Error creating " + req.data);
+  }
   return sendString("200 OK", "Team " + parsed.at(0) + " successfully created!");
 }
 
@@ -88,14 +90,17 @@ Expect req.data to be:
 teamname
 */
 string addUserToTeam(HttpRequest &req) {
+  cout << "1\n";
   const string userID = getValueFromMiddleware(req, "userID");
   if (TeamDB::userIsOnTeam(req.data, UserDB::getUsernameFromUserId(userID))) {
-    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+    return sendString("404 Not Found", "You are already on the team: " + req.data);
   }
+  cout << "2\n";
   OptionalString teamID = TeamDB::getTeamIDFromName(req.data);
   if (!teamID) {
-    return sendString("404 Not Found", "There was an issue adding you to " + req.data);
+    return sendString("404 Not Found", "No teamID found for " + req.data);
   }
+  cout << "3\n";
   bool addToTeam = TeamDB::addUserToTeam(userID, teamID.value());
   if (addToTeam) {
     return sendString("200 OK", "Added user to " + req.data);
@@ -191,6 +196,7 @@ teamname
 string getTeamInfo(HttpRequest &req) {
   // Only give the team information if you are on the team
   const string teamID = getValueFromMiddleware(req, "teamID");
+  cout << "Passed teamID check " << teamID << '\n';
   nlohmann::json j = TeamDB::getTeamInfo(teamID);
   return sendString("200 OK", j.dump());
 }
@@ -210,11 +216,8 @@ adminlevel
 string updateOtherUserAdminLevel(HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
   const string adminLevel = parsed.at(1);
-  
-  // Just in case there something other than admin level is put (since we are allowing the user to submit anything)
-  if (isValidAdminLevel(adminLevel)) {
-    UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
-  }
+  // No need to sanitize input since level is sanitized by middleware
+  UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
   return sendString("200 OK", "Changed permission successfully!");
 }
 

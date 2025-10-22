@@ -3,6 +3,7 @@
 #include "lib.h"
 #include <cstring>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <ostream>
 #include <sstream>
@@ -55,7 +56,7 @@ void printAllRedisKeys() {
 
   // Scan loop
   do {
-    cursor = redis->scan(cursor, "*", 100, back_inserter(keys));
+    cursor = redis.scan(cursor, "*", 100, back_inserter(keys));
   } while (cursor != 0);
 
   // Print all keys
@@ -120,12 +121,12 @@ const string getValueFromMiddleware(HttpRequest &req, const string &value) {
 
 // Generated with AI
 optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
-  writeToFile("output.txt", req.data);
+  // writeToFile("output.txt", req.data);
   // Check if it's multipart/form-data
   auto it = req.headers.find("Content-Type");
   if (it == req.headers.end() ||
       it->second.find("multipart/form-data") == string::npos) {
-        cout << "No multipart...\n";
+    cout << "No multipart...\n";
     return nullopt;
   }
 
@@ -133,7 +134,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
   string contentType = it->second;
   size_t pos = contentType.find("boundary=");
   if (pos == string::npos) {
-    cout << "2\n";
+    // cout << "2\n";
     return nullopt;
   }
 
@@ -142,7 +143,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
   // Find PDF content in the multipart data
   pos = req.data.find(boundary);
   if (pos == string::npos) {
-    cout << "3\n";
+    // cout << "3\n";
     return nullopt;
   }
 
@@ -152,7 +153,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
     // Fallback to the lower casing (WHY JAVASCRIPT!!!!)
     pos = req.data.find("content-disposition:");
     if (pos == string::npos) {
-      cout << "4\n";
+      // cout << "4\n";
       return nullopt;
     }
   }
@@ -160,7 +161,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
   // Get filename
   pos = req.data.find("filename=\"", pos);
   if (pos == string::npos) {
-    cout << "5\n";
+    // cout << "5\n";
     return nullopt;
   }
   pos += 10; // Skip "filename=\""
@@ -170,7 +171,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
   // Find PDF content type
   pos = req.data.find("Content-Type:", end_pos);
   if (pos == string::npos) {
-    cout << "6\n";
+    // cout << "6\n";
     return nullopt;
   }
 
@@ -182,7 +183,7 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
   // Find actual PDF data
   pos = req.data.find("\r\n\r\n", end_pos);
   if (pos == string::npos) {
-    cout << "8\n";
+    // cout << "8\n";
     return nullopt;
   }
   pos += 4; // Skip "\r\n\r\n"
@@ -198,4 +199,36 @@ optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req) {
                                  req.data.begin() + end_pos);
 
   return UploadedFile{filename, content_type, pdf_data};
+}
+
+void printRawString(const string &s) {
+  cout << "Raw string [" << s.length() << " bytes]: ";
+  for (char c : s) {
+    switch (c) {
+    case '\r':
+      cout << "\\r";
+      break;
+    case '\n':
+      cout << "\\n";
+      break;
+    case '\t':
+      cout << "\\t";
+      break;
+    case '\0':
+      cout << "\\0";
+      break;
+    case '\\':
+      cout << "\\\\";
+      break;
+    default:
+      // Print printable characters directly, non-printable as hex
+      if (c >= 32 && c <= 126) {
+        cout << c;
+      } else {
+        cout << "\\x" << hex << setw(2) << setfill('0')
+             << static_cast<int>(static_cast<unsigned char>(c)) << dec;
+      }
+    }
+  }
+  cout << endl;
 }

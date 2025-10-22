@@ -1,6 +1,6 @@
 {
   "name": "BTHSHub-Server",
-  "description": "A server for Brooklyn Tech's app hub",
+  "description": "A server for Brooklyn Tech's hub",
   "repository": "https://github.com/ZarmDev/BTHSHub-Server",
   "keywords": ["c++", "server"],
   "env": {

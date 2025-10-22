@@ -1,58 +1,79 @@
-FROM debian:bullseye-slim as build
+FROM archlinux:base as build
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# Update and install build dependencies
+RUN pacman -Syu --noconfirm && pacman -S --noconfirm \
+    base-devel \
     cmake \
-    ninja-build \
+    ninja \
     git \
     pkg-config \
-    libsodium-dev \
+    libsodium \
     curl \
     zip \
     unzip \
     tar \
-    libssl-dev \
-    libz-dev
+    openssl \
+    hiredis \
+    python \
+    && echo "Dependencies installed successfully"
 
 # Set working directory
 WORKDIR /app
 
 # Install vcpkg
 RUN git clone https://github.com/microsoft/vcpkg.git && \
-    ./vcpkg/bootstrap-vcpkg.sh
+    echo "vcpkg repository cloned" && \
+    ./vcpkg/bootstrap-vcpkg.sh && \
+    echo "vcpkg bootstrapped successfully"
+
+# Install packages with vcpkg
+RUN ./vcpkg/vcpkg install --triplet=x64-linux hiredis jwt-cpp redis-plus-plus nlohmann-json podofo && \
+    echo "vcpkg packages installed successfully"
+
+# Install redis-plus-plus manually
+RUN git clone https://github.com/sewenew/redis-plus-plus.git && \
+    cd redis-plus-plus && \
+    mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) && \
+    make install && \
+    echo "redis-plus-plus installed manually"
 
 # Copy project files
-COPY . .
+COPY . . 
+RUN echo "Project files copied"
 
-# Install dependencies and build
-RUN ./vcpkg/vcpkg install --triplet=x64-linux && \
+# Important: Make sure the build directory is completely clean
+RUN rm -rf build && \
     mkdir -p build && \
-    cd build && \
+    echo "Clean build directory created"
+
+# Build the application with clean directory
+RUN cd build && \
     cmake .. -DCMAKE_TOOLCHAIN_FILE=/app/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build .
+    echo "CMake configuration successful" && \
+    cmake --build . --verbose && \
+    echo "Build completed successfully"
 
 # Runtime stage
-FROM debian:bullseye-slim
+# FROM archlinux:base
+RUN pacman -Rns --noconfirm base-devel cmake ninja git \
+    && pacman -Scc --noconfirm
 
 # Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libsodium23 \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+# RUN pacman -Syu --noconfirm && pacman -S --noconfirm \
+#     libsodium \
+#     hiredis \
+#     ca-certificates && \
+#     pacman -Scc --noconfirm
 
-# Set working directory
 WORKDIR /app
 
-# Copy the built executable
-COPY --from=build /app/build/server /app/
+# Set PORT environment variable for Heroku
+ENV PORT=8080
 
-# Copy required files
-COPY --from=build /app/.env /app/
+# Command to run - note the path change since we're already in the right directory
+CMD ./build/server
 
 # Expose the port
-ENV PORT=4221
-EXPOSE 4221
-
-# Command to run
-CMD ["/app/server"]
+EXPOSE 8080

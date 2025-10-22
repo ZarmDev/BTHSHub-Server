@@ -11,7 +11,7 @@ using namespace std;
 using namespace sw::redis;
 
 namespace TeamDB {
-    const string& createTeam(const string &teamName, const string& isPrivate, const string& userID);
+    const string createTeam(const string &teamName, const string& isPrivate, const string& userID);
     bool teamExistsById(const string& teamId);
     unordered_set<string> getAllTeams();
     unordered_map<string, string> getTeamInfo(const string& teamId);

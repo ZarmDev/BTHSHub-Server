@@ -18,6 +18,7 @@ namespace fs = filesystem;
 // Global in this file
 string dir;
 string adminPassword;
+string isProduction;
 
 optional<fs::path> find_env_file(const vector<fs::path> &search_dirs) {
   for (const auto &dir : search_dirs) {
@@ -55,6 +56,8 @@ void readEnv() {
         Global::JWT_SECRET = vals.at(1);
       } else if (vals.at(0) == "ADMINPASS") {
         adminPassword = vals.at(1);
+      } else if (vals.at(0) == "PRODUCTION") {
+        isProduction = vals.at(1);
       }
     }
   } catch (...) {
@@ -79,7 +82,7 @@ int main(int argc, char **argv) {
   }
   string defaultPort = "4221";
   // Use Heroku's assigned port
-  const char* envPort = getenv("PORT");
+  const char *envPort = getenv("PORT");
   // Initalize based on if env port exists
   server.init(envPort ? envPort : defaultPort);
   // Maximum of 1KB for any request by default
@@ -87,19 +90,29 @@ int main(int argc, char **argv) {
   // NOT FOR PRODUCTION. Change to server url during production.
   Global::serverOrigin = "*";
 
-  // NOT FOR PRODUCTION
-  server.post("/adminsetup", [](HttpRequest &req) -> string {
+  if (isProduction == "TRUE") {
     try {
       const string createAdmin = UserDB::createUser("admin", adminPassword, "");
+      cout << createAdmin << '\n';
       UserDB::grantAdminLevel("admin", "2");
     } catch (...) {
-      cerr
-          << "Your redis DB is not online.\n Run redis-server & to start it.\n";
+      cout << "Your redis DB is not online.\n Run redis-server & to start it.\n";
       exit(1);
     }
-    return sendString("200 OK", "created admin. NOT FOR PRODUCTION");
-  });
-
+  } else {
+    server.post("/adminsetup", [](HttpRequest &req) -> string {
+      try {
+        const string createAdmin = UserDB::createUser("admin", adminPassword, "");
+        UserDB::grantAdminLevel("admin", "2");
+      } catch (...) {
+        cerr
+            << "Your redis DB is not online.\n Run redis-server & to start it.\n";
+        exit(1);
+      }
+      return sendString("200 OK", "Created admin. NOT FOR PRODUCTION");
+    });
+  }
+  
   // not protected. DOES NOT send userID since it doesn't exist here
   server.get("/", defaultRoute);
   server.post("/login", loginRoute);
@@ -120,8 +133,8 @@ int main(int argc, char **argv) {
   // only allow real users who are also members of the team, an admin or a
   // coach/moderator
   server.use({protectJWT, protectTeamMember});
-  server.get("/api/getteammembers", getTeamMembers);
-  server.get("/api/getteamcoaches", getTeamCoaches);
+  server.post("/api/getteammembers", getTeamMembers);
+  server.post("/api/getteamcoaches", getTeamCoaches);
   server.post("/api/createannoucement", createTeamAnnoucement);
   server.post("/api/getannoucements", getTeamAnnoucements);
   server.post("/api/getteaminfo", getTeamInfo);

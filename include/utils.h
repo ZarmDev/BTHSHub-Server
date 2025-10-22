@@ -20,6 +20,7 @@ string removeWhitespace(const string& str);
 string trim(const string& str);
 const string getValueFromMiddleware(HttpRequest &req, const string& value);
 optional<UploadedFile> extractPdfFromRequest(const HttpRequest &req);
+void printRawString(const string &s);
 
 // void printSet(unordered_set<string> const &s);
 // void printMap(const unordered_map<string, string>& m);
