@@ -3,20 +3,6 @@ A server for Brooklyn Tech's app hub!
 
 Copyright (c) 2025 ZarmDev. All rights reserved.
 
-# Why make this?
-- Lack of information on PSAL tryouts and a central place to find clubs, interests and sports for Freshmen
-
-https://www.reddit.com/r/BTHS/comments/1mm0aef/when_are_girls_varsity_tennis_tryouts/
-
-https://www.reddit.com/r/BTHS/comments/1m6w5f9/kids_on_the_math_team_do_you_wanna_slide_over/
-
-https://www.reddit.com/r/BTHS/comments/1jia3lr/what_are_scioly_tryouts_like_at_btech/
-
-- Lack of guides about what is and how to join teams or classes like the Math Team class, Weston Scholars, science olympiad, FRC 334
-- Confusing usage of Microsoft Teams (which is a really bad app) for robotics but SportsYou for PSAL teams (which both have problems in themselves)
-- I personally missed most of my tryouts in Freshmen year because I didn't have the SportsYou code and recently I went to a track tryout and there wasn't a single freshmen for a school of 6000 kids
-- Lack of club credit system
-
 # Installation
 ## Linux
 ### Install vcpkg
