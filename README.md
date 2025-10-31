@@ -1,6 +1,8 @@
 # BTHSHub
 A server for Brooklyn Tech's app hub!
 
+This is supposed to be run in addition to the app: https://github.com/ZarmDev/BTHSHub-App
+
 Copyright (c) 2025 ZarmDev. All rights reserved.
 
 # Installation

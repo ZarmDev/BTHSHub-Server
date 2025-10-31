@@ -142,10 +142,10 @@ def getSchedule(token):
 check_server()
 adminSetup()
 createUser("moderator", "pass", "p")
-createUser("regularuser", "pass", "p2")
+createUser("regularuser", "pass2", "p2")
 
 adminToken = login("admin", os.getenv("ADMINPASS"))
-regularUserToken = login("regularuser", "pass")
+regularUserToken = login("regularuser", "pass2")
 makeModerator(adminToken, "moderator")
 moderatorToken = login("moderator", "pass")
 

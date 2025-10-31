@@ -26,6 +26,7 @@ bool protectRoute(HttpRequest &req, AccessLevel level) {
     // Not sure why but this happens sometimes in Node.js
     it = req.headers.find("authorization");
     if (it == req.headers.end()) {
+      cout << "Authorization header not found\n";
       return false; // Header not found
     }
   }
@@ -36,19 +37,27 @@ bool protectRoute(HttpRequest &req, AccessLevel level) {
   // For ANY_USER level, verify token
   if (level == AccessLevel::ANY_USER) {
     userID = JWT::verifyJWTToken(authHeader);
-    if (userID.empty()) return false;
+    if (userID.empty()) {
+      cout << "Invalid JWT Token\n";
+      return false;
+    }
     req.extra["userID"] = userID;
     return true;
   }
   
   // For other levels, get admin level
   userID = JWT::getUserIdFromToken(authHeader);
-  if (userID.empty()) return false;
+  cout << "userID: " << userID << '\n';
+  if (userID.empty()) {
+    cout << "Unable to get userID from token\n";
+    return false;
+  }
   
   string adminLevel = redis.hget("user:" + userID, "adminLevel").value();
   req.extra["userID"] = userID;
   
   // Check permissions based on level
+  cout << "Permission level: " << adminLevel << '\n';
   switch (level) {
     case AccessLevel::MODERATOR:
       return adminLevel == "1";

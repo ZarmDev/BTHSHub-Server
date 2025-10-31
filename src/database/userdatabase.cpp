@@ -110,7 +110,7 @@ string getUsernameFromUserId(const string& userID) {
 bool grantAdminLevel(const string& username, string level) {
   try {
     const string user_key = "user:" + UserDB::getUserIdByUsername(username);
-    if (redis.exists(user_key)) {
+    if (!redis.exists(user_key)) {
       return false;
     }
     // Set adminLevel to 2 (admin)

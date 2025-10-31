@@ -217,8 +217,8 @@ string updateOtherUserAdminLevel(HttpRequest &req) {
   vector<string> parsed = split(req.data, "\n");
   const string adminLevel = parsed.at(1);
   // No need to sanitize input since level is sanitized by middleware
-  UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
-  return sendString("200 OK", "Changed permission successfully!");
+  bool success = UserDB::grantAdminLevel(parsed.at(0), parsed.at(1));
+  return success ? sendString("200 OK", "Changed permission successfully!") : sendString("400 Not Found", "Failed to change admin level");
 }
 
 /*

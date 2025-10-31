@@ -119,7 +119,7 @@ bool Server::start() {
   while (true) {
     int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
                            (socklen_t *)&client_addr_len);
-    cout << "Client connected\n";
+    // cout << "Client connected\n";
     try {
       // Create a thread, to handle it and then just run it seperately so the
       // program can continue accepting requests
@@ -237,7 +237,7 @@ void Server::handleClient(int client_fd) {
               shouldContinue = false;
               break;
             }
-            cout << "Found content-length: " << contentLengthHeader << '\n';
+            // cout << "Found content-length: " << contentLengthHeader << '\n';
           }
           // This does add an extra .find() call but we need it for max
           // character checks on specfiic urls
